@@ -24,7 +24,19 @@ class LocalVectorStore(BaseVectorStore):
     ):
         """Initialize the local vector store with a root path and collection name."""
         super().__init__(collection_name=collection_name, embedding_model=embedding_model, **kwargs)
-        self.root_path = Path(root_path)
+        
+        # 使用绝对路径，优先使用项目根目录
+        root_path_obj = Path(root_path)
+        if not root_path_obj.is_absolute():
+            # 尝试使用项目根目录（假设当前在 external/ReMe/reme_ai 下）
+            project_root = Path(__file__).parent.parent.parent.parent.parent / "local_vector_store"
+            if project_root.exists():
+                root_path_obj = project_root
+                logger.info(f"📂 LocalVectorStore使用项目根目录: {root_path_obj.absolute()}")
+            else:
+                logger.warning(f"⚠️ 项目根目录不存在，使用相对路径: {root_path_obj.absolute()}")
+        
+        self.root_path = root_path_obj
         self.collection_path = self.root_path / collection_name
         self.root_path.mkdir(parents=True, exist_ok=True)
 
