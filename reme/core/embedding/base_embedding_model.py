@@ -6,7 +6,6 @@ Defines the abstract base class and standard API for all embedding model impleme
 import asyncio
 import hashlib
 import json
-import os
 import time
 from abc import ABC
 from collections import OrderedDict
@@ -14,8 +13,7 @@ from pathlib import Path
 
 from loguru import logger
 
-from ..schema import VectorNode
-from ..schema.memory_chunk import MemoryChunk
+from ..schema import VectorNode, MemoryChunk
 
 
 class BaseEmbeddingModel(ABC):
@@ -30,13 +28,15 @@ class BaseEmbeddingModel(ABC):
         api_key: str | None = None,
         base_url: str | None = None,
         model_name: str = "",
-        dimensions: int | None = 1024,
+        dimensions: int = 1024,
+        use_dimensions: bool = False,
         max_batch_size: int = 10,
         max_retries: int = 3,
         raise_exception: bool = True,
         max_input_length: int = 8192,
         cache_dir: str | Path = ".reme",
         max_cache_size: int = 2000,
+        enable_cache: bool = True,
         **kwargs,
     ):
         """Initialize model configuration and parameters.
@@ -46,23 +46,27 @@ class BaseEmbeddingModel(ABC):
             base_url: Base URL for the embedding service
             model_name: Name of the embedding model
             dimensions: Vector dimensions of the embeddings
+            use_dimensions: Whether to pass dimensions parameter to API (some APIs don't support it)
             max_batch_size: Maximum batch size for embedding requests
             max_retries: Maximum number of retry attempts on failure
             raise_exception: Whether to raise exceptions on failure
             max_input_length: Maximum input text length
             max_cache_size: Maximum number of embeddings to cache in memory (LRU)
+            enable_cache: Whether to enable embedding cache
             **kwargs: Additional model-specific parameters
         """
-        self._api_key: str = api_key
-        self._base_url: str = base_url
+        self.api_key: str = api_key
+        self.base_url: str = base_url
         self.model_name = model_name
         self.dimensions = dimensions
+        self.use_dimensions = use_dimensions
         self.max_batch_size = max_batch_size
         self.max_retries = max_retries
         self.raise_exception = raise_exception
         self.max_input_length = max_input_length
         self.cache_dir = cache_dir
         self.max_cache_size = max_cache_size
+        self.enable_cache = enable_cache
         self.kwargs = kwargs
 
         # Initialize LRU cache for embeddings
@@ -73,25 +77,10 @@ class BaseEmbeddingModel(ABC):
         self.cache_path: Path = Path(self.cache_dir)
         self.cache_path.mkdir(parents=True, exist_ok=True)
 
-        # Load cache from disk if available
-        self._load_cache()
-
-    @property
-    def api_key(self) -> str | None:
-        """Get API key from environment variable."""
-        return os.getenv("REME_EMBEDDING_API_KEY") or self._api_key
-
-    @property
-    def base_url(self) -> str | None:
-        """Get base URL from environment variable."""
-        return os.getenv("REME_EMBEDDING_BASE_URL") or self._base_url
-
     def _truncate_text(self, text: str) -> str:
         """Truncate text to max_input_length if it exceeds the limit."""
         if len(text) > self.max_input_length:
-            logger.warning(
-                f"Text length {len(text)} exceeds max_input_length {self.max_input_length}, truncating",
-            )
+            logger.warning(f"Text length {len(text)} exceeds {self.max_input_length}, truncating")
             return text[: self.max_input_length]
         return text
 
@@ -99,7 +88,34 @@ class BaseEmbeddingModel(ABC):
         """Truncate a list of texts to max_input_length."""
         return [self._truncate_text(text) for text in texts]
 
-    def _get_cache_key(self, text: str) -> str:
+    def _validate_and_adjust_embedding(self, embedding: list[float]) -> list[float]:
+        """Validate and adjust embedding dimensions to match expected dimensions.
+
+        Args:
+            embedding: The embedding vector to validate
+
+        Returns:
+            Embedding vector adjusted to match self.dimensions
+        """
+        actual_len = len(embedding)
+        if actual_len == self.dimensions:
+            return embedding
+
+        elif actual_len < self.dimensions:
+            logger.warning(
+                f"[ACTUAL_EMB_LENGTH]Embedding dimensions {actual_len} is less than expected {self.dimensions}, "
+                f"padding with zeros",
+            )
+            return embedding + [0.0] * (self.dimensions - actual_len)
+
+        else:
+            logger.warning(
+                f"[ACTUAL_EMB_LENGTH]Embedding dimensions {actual_len} is greater than expected {self.dimensions}, "
+                f"truncating to {self.dimensions}",
+            )
+            return embedding[: self.dimensions]
+
+    def _get_cache_key(self, text: str, dimensions: int) -> str:
         """Generate a cache key by hashing text + model_name + dimensions.
 
         This ensures that the same text produces different cache keys when
@@ -107,12 +123,13 @@ class BaseEmbeddingModel(ABC):
 
         Args:
             text: Input text to hash
+            dimensions: Vector dimensions of the embeddings
 
         Returns:
             SHA256 hash combining text, model name, and dimensions
         """
         # Combine text, model_name, and dimensions to create unique cache key
-        cache_string = f"{text}|{self.model_name}|{self.dimensions}"
+        cache_string = f"{text}|{self.model_name}|{dimensions}"
         return hashlib.sha256(cache_string.encode("utf-8")).hexdigest()
 
     def _get_cache_file_path(self) -> Path:
@@ -133,12 +150,16 @@ class BaseEmbeddingModel(ABC):
         Loads in reverse order (newest first) to prioritize recent embeddings
         when max_cache_size is smaller than the file content.
         """
+        if not self.enable_cache:
+            return
+
         cache_file = self._get_cache_file_path()
         if not cache_file.exists():
             logger.info(f"No cache file found at {cache_file}, starting with empty cache")
             return
 
         try:
+            load_start = time.time()
             # Read all lines first (to load in reverse order)
             with open(cache_file, "r", encoding="utf-8") as f:
                 lines = f.readlines()
@@ -151,12 +172,21 @@ class BaseEmbeddingModel(ABC):
                     continue
                 try:
                     data = json.loads(line)
-                    cache_key = data.get("key")
-                    embedding = data.get("embedding")
+                    if not data:
+                        continue
+                    # Each line is {cache_key: embedding}
+                    cache_key, embedding = next(iter(data.items()))
 
-                    if cache_key and embedding:
+                    if cache_key and embedding and isinstance(embedding, list):
                         # Skip if already loaded (keep the newest)
                         if cache_key in self._embedding_cache:
+                            continue
+
+                        if len(embedding) != self.dimensions:
+                            logger.warning(
+                                f"Embedding dimensions mismatch for cache key {cache_key}, "
+                                f"expected {self.dimensions}, got {len(embedding)}",
+                            )
                             continue
 
                         # Respect max_cache_size during loading
@@ -172,9 +202,16 @@ class BaseEmbeddingModel(ABC):
                     logger.warning(f"Failed to parse line in cache file: {e}")
                     continue
 
-            logger.info(f"Loaded {loaded_count} embeddings from cache file: {cache_file}")
+            logger.info(
+                f"Loaded {loaded_count} embeddings from cache file: {cache_file} in {time.time() - load_start:.2f}s",
+            )
         except Exception as e:
-            logger.error(f"Failed to load cache from {cache_file}: {e}")
+            logger.error(f"Failed to load cache from {cache_file}: {e}, deleting cache file")
+            try:
+                cache_file.unlink()
+                logger.info(f"Deleted corrupted cache file: {cache_file}")
+            except Exception as del_e:
+                logger.error(f"Failed to delete cache file {cache_file}: {del_e}")
 
     def _save_cache(self) -> None:
         """Save embedding cache to disk (JSONL format).
@@ -182,6 +219,9 @@ class BaseEmbeddingModel(ABC):
         Each line contains a JSON object with the cache key and embedding vector.
         Only saves if cache is non-empty.
         """
+        if not self.enable_cache:
+            return
+
         logger.info(f"Attempting to save cache, current size: {len(self._embedding_cache)}")
         if not self._embedding_cache:
             logger.info("Cache is empty, skipping save")
@@ -191,7 +231,13 @@ class BaseEmbeddingModel(ABC):
         try:
             with open(cache_file, "w", encoding="utf-8") as f:
                 for cache_key, embedding in self._embedding_cache.items():
-                    cache_entry = {"key": cache_key, "embedding": embedding}
+                    if len(embedding) != self.dimensions:
+                        logger.warning(
+                            f"Embedding dimensions mismatch for cache key {cache_key}, "
+                            f"expected {self.dimensions}, got {len(embedding)}",
+                        )
+                        continue
+                    cache_entry = {cache_key: embedding}
                     f.write(json.dumps(cache_entry, ensure_ascii=False) + "\n")
 
             logger.info(f"Saved {len(self._embedding_cache)} embeddings to cache file: {cache_file}")
@@ -207,16 +253,30 @@ class BaseEmbeddingModel(ABC):
         Returns:
             Cached embedding vector or None if not found
         """
-        cache_key = self._get_cache_key(text)
+        if not self.enable_cache:
+            return None
+
+        cache_key = self._get_cache_key(text, self.dimensions)
         if cache_key in self._embedding_cache:
+            embeddings: list[float] = self._embedding_cache[cache_key]
+
+            # Validate embedding dimensions match expected dimensions
+            if len(embeddings) != self.dimensions:
+                logger.warning(
+                    f"Cached embedding dimensions mismatch: expected {self.dimensions}, "
+                    f"got {len(embeddings)}. Removing invalid cache entry.",
+                )
+                del self._embedding_cache[cache_key]
+                self._cache_misses += 1
+                return None
+
             # Move to end (most recently used)
             self._embedding_cache.move_to_end(cache_key)
             self._cache_hits += 1
             text_preview = text[:50] + "..." if len(text) > 50 else text
-            logger.info(
-                f"Cache hit for text: '{text_preview}' (hits: {self._cache_hits}, misses: {self._cache_misses})",
-            )
-            return self._embedding_cache[cache_key]
+            logger.info(f"Cache hit for text: {text_preview} (hits: {self._cache_hits}, misses: {self._cache_misses})")
+            return embeddings
+
         self._cache_misses += 1
         return None
 
@@ -227,12 +287,21 @@ class BaseEmbeddingModel(ABC):
             text: Input text used as cache key
             embedding: Embedding vector to cache
         """
+        if not self.enable_cache:
+            return
+
         if self.max_cache_size <= 0:
             return
 
-        cache_key = self._get_cache_key(text)
+        cache_key = self._get_cache_key(text, self.dimensions)
+        if len(embedding) != self.dimensions:
+            logger.warning(
+                f"[PUT_TO_CACHE] Embedding dimensions mismatch for cache key {cache_key}, "
+                f"expected {self.dimensions}, got real length {len(embedding)}",
+            )
+            return
 
-        # Remove oldest entry if cache is full
+        # Remove the oldest entry if cache is full
         if len(self._embedding_cache) >= self.max_cache_size and cache_key not in self._embedding_cache:
             self._embedding_cache.popitem(last=False)
 
@@ -280,7 +349,7 @@ class BaseEmbeddingModel(ABC):
         for i in range(self.max_retries):
             try:
                 result = await self._get_embeddings([truncated_text], **kwargs)
-                embedding = result[0]
+                embedding = self._validate_and_adjust_embedding(result[0])
                 # Store in cache
                 self._put_to_cache(truncated_text, embedding)
                 return embedding
@@ -326,8 +395,9 @@ class BaseEmbeddingModel(ABC):
                     if batch_embeddings:
                         # Store results and cache them
                         for orig_idx, text, embedding in zip(batch_indices, batch_texts, batch_embeddings):
-                            results[orig_idx] = embedding
-                            self._put_to_cache(text, embedding)
+                            adjusted_embedding = self._validate_and_adjust_embedding(embedding)
+                            results[orig_idx] = adjusted_embedding
+                            self._put_to_cache(text, adjusted_embedding)
                     break
                 except Exception as e:
                     logger.error(f"Model {self.model_name} batch failed: {e}")
@@ -352,7 +422,7 @@ class BaseEmbeddingModel(ABC):
         for i in range(self.max_retries):
             try:
                 result = self._get_embeddings_sync([truncated_text], **kwargs)
-                embedding = result[0]
+                embedding = self._validate_and_adjust_embedding(result[0])
                 # Store in cache
                 self._put_to_cache(truncated_text, embedding)
                 return embedding
@@ -398,8 +468,9 @@ class BaseEmbeddingModel(ABC):
                     if batch_embeddings:
                         # Store results and cache them
                         for orig_idx, text, embedding in zip(batch_indices, batch_texts, batch_embeddings):
-                            results[orig_idx] = embedding
-                            self._put_to_cache(text, embedding)
+                            adjusted_embedding = self._validate_and_adjust_embedding(embedding)
+                            results[orig_idx] = adjusted_embedding
+                            self._put_to_cache(text, adjusted_embedding)
                     break
                 except Exception as exc:
                     logger.error(f"Model {self.model_name} batch failed: {exc}")
@@ -510,6 +581,14 @@ class BaseEmbeddingModel(ABC):
         else:
             logger.warning(f"Mismatch: got {len(embeddings)} vectors for {len(chunks)} chunks")
         return chunks
+
+    def start_sync(self):
+        """Synchronously initialize resources and load cache."""
+        self._load_cache()
+
+    async def start(self):
+        """Asynchronously initialize resources and load cache."""
+        self._load_cache()
 
     def close_sync(self):
         """Synchronously release resources and close connections."""

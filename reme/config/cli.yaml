@@ -8,23 +8,33 @@ metadata:
   vector_weight: 0.7
   candidate_multiplier: 2
 
-llms:
+as_llms:
   default:
     backend: openai
-    model_name: qwen3-235b-a22b-thinking-2507
-    request_interval: 1
+    model_name: qwen3.5-plus
+
+as_llm_formatters:
+  default:
+    backend: openai
+
+as_token_counters:
+  default:
+    backend: hf
+    pretrained_model_name_or_path: Qwen/Qwen3-Coder-30B-A3B-Instruct
+    use_mirror: true
 
 embedding_models:
   default:
     backend: openai
     model_name: text-embedding-v4
     dimensions: 1024
+    enable_cache: true
+    use_dimensions: false
 
-memory_stores:
+file_stores:
   default:
     backend: chroma
-#    backend: local
-    db_name: reme.db
+    #    backend: local
     store_name: reme
     embedding_model: default
     fts_enabled: true
@@ -33,17 +43,8 @@ memory_stores:
 file_watchers:
   default:
     backend: full
-    memory_store: default
-    watch_paths: [".reme", ".reme/memory"]
-    suffix_filters: [".md"]
+    file_store: default
+    watch_paths: [ ".reme", ".reme/memory" ]
+    suffix_filters: [ ".md" ]
     recursive: false
-    scan_on_start: true
 
-token_counters:
-  default:
-    backend: base
-
-  hf:
-    backend: hf
-    model_name: Qwen/Qwen3-Coder-30B-A3B-Instruct
-    use_mirror: true

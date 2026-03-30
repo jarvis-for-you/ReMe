@@ -5,7 +5,7 @@ from .es_vector_store import ESVectorStore
 from .local_vector_store import LocalVectorStore
 from .pgvector_store import PGVectorStore
 from .qdrant_vector_store import QdrantVectorStore
-from ..context import R
+from ..registry_factory import R
 
 # Lazy import for ChromaVectorStore to avoid loading chromadb at startup
 # This is needed because chromadb has pydantic v1 compatibility issues with Python 3.14

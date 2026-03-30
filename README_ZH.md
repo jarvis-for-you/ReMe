@@ -14,842 +14,613 @@
   <a href="./README.md"><img src="https://img.shields.io/badge/English-Click-yellow" alt="English"></a>
   <a href="./README_ZH.md"><img src="https://img.shields.io/badge/简体中文-点击查看-orange" alt="简体中文"></a>
   <a href="https://github.com/agentscope-ai/ReMe"><img src="https://img.shields.io/github/stars/agentscope-ai/ReMe?style=social" alt="GitHub Stars"></a>
+  <a href="https://deepwiki.com/agentscope-ai/ReMe"><img src="https://img.shields.io/badge/DeepWiki-Ask_Devin-navy.svg" alt="DeepWiki"></a>
 </p>
 
 <p align="center">
-  <strong>面向智能体的记忆管理工具包, Remember Me, Refine Me.</strong><br>
-  <em><sub>如果 ReMe 对你有帮助，欢迎点一个 ⭐ Star，你的支持是我们持续改进的动力。</sub></em>
+<a href="https://trendshift.io/repositories/20528" target="_blank"><img src="https://trendshift.io/api/badge/repositories/20528" alt="agentscope-ai%2FReMe | Trendshift" style="width: 250px; height: 55px;" width="250" height="55"/></a>
 </p>
 
+<p align="center">
+  <strong>面向智能体的记忆管理工具包，Remember Me, Refine Me.</strong><br>
+</p>
+
+> 老版本请参阅 [0.2.x 版本文档](docs/README_0_2_x_ZH.md)
+
 ---
 
-ReMe 是一个**模块化的记忆管理工具包**，为 AI 智能体提供统一的记忆能力——支持在用户、任务与智能体之间提取、复用与共享记忆。
+🧠 ReMe 是一个专为 **AI 智能体** 打造的记忆管理框架，同时提供基于[文件系统](#-基于文件的记忆系统-remelight)
+和基于[向量库](#-基于向量库的记忆系统)的记忆系统。
 
-智能体的记忆可以被视为：
+它解决智能体记忆的两类核心问题：**上下文窗口有限**（长对话时早期信息被截断或丢失）、**会话无状态**（新对话无法继承历史，每次从零开始）。
 
-```text
-Agent Memory = Long-Term Memory + Short-Term Memory
-             = (Personal + Task + Tool) Memory + (Working Memory)
+ReMe 让智能体拥有**真正的记忆力**——旧对话自动浓缩，重要信息持久保存，下次对话自动想起来。
+
+在 LoCoMo 与 HaluMem 基准测试中，ReMe 取得了领先结果，详见[实验效果](#实验效果)。
+
+<details>
+<summary><b>你可以用 ReMe 做什么</b></summary>
+
+<br>
+
+- **个人助理**：为 [CoPaw](https://github.com/agentscope-ai/CoPaw) 等智能体提供长期记忆，记住用户偏好和历史对话。
+- **编程助手**：记录代码风格偏好、项目上下文，跨会话保持一致的开发体验。
+- **客服机器人**：记录用户问题历史、偏好设置，提供个性化服务。
+- **任务自动化**：从历史任务中学习成功/失败模式，持续优化执行策略。
+- **知识问答**：构建可检索的知识库，支持语义搜索和精确匹配。
+- **多轮对话**：自动压缩长对话，在有限上下文窗口内保留关键信息。
+
+</details>
+
+---
+
+## 📁 基于文件的记忆系统 (ReMeLight)
+
+> 记忆即文件，文件即记忆
+
+将**记忆视为文件**——可读、可编辑、可复制。
+[CoPaw](https://github.com/agentscope-ai/CoPaw) 通过继承 `ReMeLight` 实现了长期记忆和上下文的管理。
+
+| 传统记忆系统    | File Based ReMe |
+|-----------|-----------------|
+| 🗄️ 数据库存储 | 📝 Markdown 文件  |
+| 🔒 不可见    | 👀 随时可读         |
+| ❌ 难修改     | ✏️ 直接编辑         |
+| 🚫 难迁移    | 📦 复制即迁移        |
+
+```
+working_dir/
+├── MEMORY.md              # 长期记忆：用户偏好等持久信息
+├── memory/
+│   └── YYYY-MM-DD.md      # 每日日记：对话结束后自动写入
+├── dialog/                # 原始对话记录：压缩前的完整对话
+│   └── YYYY-MM-DD.jsonl   # 按日期存储的对话消息（JSONL 格式）
+└── tool_result/           # 超长工具输出缓存（自动管理，超期自动清理）
+    └── <uuid>.txt
 ```
 
-- **个人记忆（Personal Memory）**：理解用户偏好并适应上下文
-- **任务记忆（Task Memory）**：从经验中学习并在类似任务中表现更好
-- **工具记忆（Tool Memory）**：基于历史表现优化工具选择和参数使用
-- **工作记忆（Working Memory）**：管理长运行智能体的短期上下文，避免上下文溢出
+### 核心能力
 
----
+[ReMeLight](reme/reme_light.py) 是该记忆系统的核心类，为 AI Agent 提供完整的记忆管理能力：
 
-## 📰 最新进展
-
-- **[2026-02]** 💻 ReMeCli：终端 AI 聊天助手，内置记忆管理能力。当对话过长时自动将旧内容压缩为摘要以释放上下文空间，同时将重要信息以 Markdown 文件持久化存储，供未来会话自动检索使用。记忆设计灵感来源于 [OpenClaw](https://github.com/openclaw/openclaw)。
-  - [快速开始](docs/cli/quick_start_en.md)
-  - 输入 `/horse` 触发马年彩蛋——烟花、奔马动画和随机马年祝福。
-<table border="0" cellspacing="0" cellpadding="0" style="border: none;">
-  <tr style="border: none;">
-    <td width="10%" style="border: none; vertical-align: middle; text-align: center;">
-      <strong>马<br>上<br>有<br>钱</strong>
-    </td>
-    <td width="80%" style="border: none;">
-      <video src="https://github.com/user-attachments/assets/befa7e40-63ba-4db2-8251-516024616e00" autoplay muted loop controls></video>
-    </td>
-    <td width="10%" style="border: none; vertical-align: middle; text-align: center;">
-      <strong>马<br>到<br>成<br>功</strong>
-    </td>
-  </tr>
+<table>
+<tr><th>类别</th><th>方法</th><th>功能</th><th>关键组件</th></tr>
+<tr><td rowspan="4">上下文管理</td><td><code>check_context</code></td><td>📊 检查上下文大小</td><td><a href="reme/memory/file_based/components/context_checker.py">ContextChecker</a> — 检查上下文是否超出阈值并拆分 Message</td></tr>
+<tr><td><code>compact_memory</code></td><td>📦 压缩历史对话为摘要</td><td><a href="reme/memory/file_based/components/compactor.py">Compactor</a> — ReActAgent 生成结构化上下文摘要</td></tr>
+<tr><td><code>compact_tool_result</code></td><td>✂️ 压缩超长工具输出</td><td><a href="reme/memory/file_based/components/tool_result_compactor.py">ToolResultCompactor</a> — 截断超长的工具调用结果并转存到 <code>tool_result/</code>，消息中保留文件引用</td></tr>
+<tr><td><code>pre_reasoning_hook</code></td><td>🔄 推理前预处理钩子</td><td>compact_tool_result + check_context + compact_memory + summary_memory(async)</td></tr>
+<tr><td rowspan="2">长期记忆</td><td><code>summary_memory</code></td><td>📝 将重要记忆写入文件</td><td><a href="reme/memory/file_based/components/summarizer.py">Summarizer</a> — ReActAgent + 文件工具（read / write / edit）</td></tr>
+<tr><td><code>memory_search</code></td><td>🔍 语义搜索记忆</td><td><a href="reme/memory/file_based/tools/memory_search.py">MemorySearch</a> — 向量 + BM25 混合检索</td></tr>
+<tr><td rowspan="2">会话内存</td><td><code>get_in_memory_memory</code></td><td>💾 创建会话内存实例</td><td>返回 ReMeInMemoryMemory，自动配置 dialog_path 实现对话持久化</td></tr>
+<tr><td><code>await_summary_tasks</code></td><td>⏳ 等待异步摘要任务</td><td>阻塞等待所有后台摘要任务完成</td></tr>
+<tr><td>-</td><td><code>start</code></td><td>🚀 启动记忆系统</td><td>初始化文件存储、文件监控、Embedding 缓存；清理过期工具结果文件</td></tr>
+<tr><td>-</td><td><code>close</code></td><td>📕 关闭并清理</td><td>清理工具结果文件、停止文件监控、保存 Embedding 缓存</td></tr>
 </table>
 
-- **[2025-12]** 📄 我们的程序性（任务）记忆论文已在 [arXiv](https://arxiv.org/abs/2512.10696) 发布
-- **[2025-11]** 🧠 基于工作记忆的 react-agent demo（[介绍](docs/work_memory/message_offload.md)、[Quick Start](docs/cookbook/working/quick_start.md)、[代码](cookbook/working_memory/work_memory_demo.py)）
-- **[2025-10]** 🚀 直接 Python 导入：支持 `from reme_ai import ReMeApp`，无需 HTTP/MCP 服务
-- **[2025-10]** 🔧 工具记忆：支持基于数据驱动的工具选择与参数优化（[指南](docs/tool_memory/tool_memory.md)）
-- **[2025-09]** 🎉 支持异步操作，并已集成至 agentscope-runtime
-- **[2025-09]** 🎉 集成任务记忆与个人记忆
-- **[2025-09]** 🧪 在 appworld、bfcl(v3)、frozenlake 等环境中验证有效性（[实验文档](docs/cookbook)）
-- **[2025-08]** 🚀 支持 MCP 协议（[快速开始](docs/mcp_quick_start.md)）
-- **[2025-06]** 🚀 支持多种向量存储后端（Elasticsearch & ChromaDB）（[向量库指南](docs/vector_store_api_guide.md)）
-- **[2024-09]** 🧠 支持个性化与时间敏感的记忆存储
-
 ---
 
-## ✨ 架构设计
+### 🚀 快速开始
 
-<p align="center">
- <img src="docs/_static/figure/reme_structure.jpg" alt="ReMe 架构" width="80%">
-</p>
+#### 安装
 
-ReMe 提供了一个**模块化的记忆管理工具包**，具有可插拔的组件，可以集成到任何智能体框架中。系统包括：
-
-#### 🧠 **任务记忆 / 经验记忆（Task Memory/Experience）**
-
-可在不同智能体之间复用的程序性知识：
-
-- **成功模式识别**：识别有效策略并理解其背后的原理
-- **失败分析学习**：从错误中学习，避免重复踩坑
-- **对比式模式**：通过多条采样轨迹的对比获取更有价值的记忆
-- **验证模式**：通过验证模块确认提炼出的经验是否有效
-
-了解如何使用任务记忆可参考：[任务记忆文档](docs/task_memory/task_memory.md)
-
-#### 👤 **个人记忆（Personal Memory）**
-
-面向特定用户的情境化长期记忆：
-
-- **个体偏好**：记录用户的习惯、偏好与交互风格
-- **情境自适应**：基于时间与上下文动态管理记忆
-- **渐进式学习**：在长期多轮交互中不断加深对用户的理解
-- **时间敏感**：在记忆检索与整合中考虑时间因素
-
-了解如何使用个人记忆可参考：[个人记忆文档](docs/personal_memory/personal_memory.md)
-
-#### 🔧 **工具记忆（Tool Memory）**
-
-基于真实调用数据的工具选择与使用优化：
-
-- **历史表现追踪**：记录成功率、调用耗时与 Token 成本
-- **LLM-as-Judge 评估**：提供工具成功 / 失败原因的定性洞察
-- **参数优化**：从历史成功调用中学习最优参数配置
-- **动态指南**：将静态工具描述演化为可持续更新的「活文档」
-
-了解如何使用工具记忆可参考：[工具记忆文档](docs/tool_memory/tool_memory.md)
-
-#### 🧠 **工作记忆（Working Memory）**
-
-面向长流程智能体的短期上下文记忆，通过**消息卸载与重载（message offload & reload）**实现：
-- **消息卸载（Message Offload）**：将体积巨大的工具输出压缩为外部文件或 LLM 摘要
-- **消息重载（Message Reload）**：按需搜索（`grep_working_memory`）并读取（`read_working_memory`）已卸载的内容
-
-📖 **概念与 API：**
-- 消息卸载概览：[Message Offload](docs/work_memory/message_offload.md)
-- 卸载 / 重载算子：[Message Offload Ops](docs/work_memory/message_offload_ops.md)、[Message Reload Ops](docs/work_memory/message_reload_ops.md)
-
-💻 **端到端 Demo：**
-- 工作记忆快速上手：[Working Memory Quick Start](docs/cookbook/working/quick_start.md)
-- 带工作记忆的 ReAct 智能体：[react_agent_with_working_memory.py](cookbook/working_memory/react_agent_with_working_memory.py)
-- 可运行 Demo：[work_memory_demo.py](cookbook/working_memory/work_memory_demo.py)
-
----
-
-## 🛠️ 安装
-
-### 通过 PyPI 安装（推荐）
-
-```bash
-pip install reme-ai
-```
-
-### 从源码安装
+**从源码安装：**
 
 ```bash
 git clone https://github.com/agentscope-ai/ReMe.git
 cd ReMe
-pip install .
+pip install -e ".[light]"
 ```
 
-### 环境变量配置
-
-复制 `example.env` 为 `.env` 并按需修改：
+**更新到最新版本：**
 
 ```bash
-FLOW_LLM_API_KEY=sk-xxxx
-FLOW_LLM_BASE_URL=https://xxxx/v1
-FLOW_EMBEDDING_API_KEY=sk-xxxx
-FLOW_EMBEDDING_BASE_URL=https://xxxx/v1
+git pull
+pip install -e ".[light]"
+```
+
+#### 环境变量
+
+`ReMeLight` 环境变量配置 Embedding 和存储后端
+
+| Variable             | Description             | Example                                             |
+|----------------------|-------------------------|-----------------------------------------------------|
+| `LLM_API_KEY`        | LLM API key             | `sk-xxx`                                            |
+| `LLM_BASE_URL`       | LLM base URL            | `https://dashscope.aliyuncs.com/compatible-mode/v1` |
+| `EMBEDDING_API_KEY`  | Embedding API key (可选)  | `sk-xxx`                                            |
+| `EMBEDDING_BASE_URL` | Embedding base URL (可选) | `https://dashscope.aliyuncs.com/compatible-mode/v1` |
+
+#### Python 使用
+
+```python
+import asyncio
+
+from reme.reme_light import ReMeLight
+
+
+async def main():
+    # 初始化 ReMeLight
+    reme = ReMeLight(
+        default_as_llm_config={"model_name": "qwen3.5-35b-a3b"},
+        # default_embedding_model_config={"model_name": "text-embedding-v4"},
+        default_file_store_config={"fts_enabled": True, "vector_enabled": False},
+        enable_load_env=True,
+    )
+    await reme.start()
+
+    messages = [...]  # 对话消息列表
+
+    # 1. 检查上下文大小（Token 计数，判断是否需要压缩）
+    messages_to_compact, messages_to_keep, is_valid = await reme.check_context(
+        messages=messages,
+        memory_compact_threshold=90000,  # 触发压缩的阈值（tokens）
+        memory_compact_reserve=10000,  # 保留的近期消息 token 数
+    )
+
+    # 2. 将历史对话压缩为结构化摘要（可传入上轮摘要，实现增量更新）
+    summary = await reme.compact_memory(
+        messages=messages,
+        previous_summary="",
+        max_input_length=128000,  # 模型上下文窗口（tokens）
+        compact_ratio=0.7,  # 达到 max_input_length * 0.7 时触发压缩
+        language="zh",  # 摘要语言（zh / ""）
+    )
+
+    # 3. 压缩超长工具输出（防止工具结果撑爆上下文）
+    messages = await reme.compact_tool_result(messages)
+
+    # 4. 推理前预处理钩子（自动压缩工具结果 + 检查上下文 + 生成摘要）
+    processed_messages, compressed_summary = await reme.pre_reasoning_hook(
+        messages=messages,
+        system_prompt="你是一个有帮助的 AI 助手。",
+        compressed_summary="",
+        max_input_length=128000,
+        compact_ratio=0.7,
+        memory_compact_reserve=10000,
+        enable_tool_result_compact=True,
+        tool_result_compact_keep_n=3,
+    )
+
+    # 5. 将重要记忆写入文件（摘要写入 memory/YYYY-MM-DD.md）
+    summary_result = await reme.summary_memory(
+        messages=messages,
+        language="zh",
+    )
+
+    # 6. 语义搜索记忆（向量 + BM25 混合检索）
+    result = await reme.memory_search(query="Python 版本偏好", max_results=5)
+
+    # 7. 创建会话内存实例（管理单次对话的上下文）
+    from reme.memory.file_based.reme_in_memory_memory import ReMeInMemoryMemory
+    memory = reme.get_in_memory_memory()  # 自动配置 dialog_path
+    for msg in messages:
+        await memory.add(msg)
+    token_stats = await memory.estimate_tokens(max_input_length=128000)
+    print(f"当前上下文使用率: {token_stats['context_usage_ratio']:.1f}%")
+    print(f"消息 Token 数: {token_stats['messages_tokens']}")
+    print(f"预估总 Token 数: {token_stats['estimated_tokens']}")
+
+    # 8. 标记消息为压缩状态（自动持久化到 dialog/YYYY-MM-DD.jsonl）
+    # await memory.mark_messages_compressed(messages_to_compact)
+
+    # 关闭 ReMeLight
+    await reme.close()
+
+
+if __name__ == "__main__":
+    asyncio.run(main())
+```
+
+> 📂 完整示例代码：[test_reme_light.py](tests/light/test_reme_light.py)
+> 📋 运行结果示例：[test_reme_light_log.txt](tests/light/test_reme_light_log.txt)（223,838 tokens → 1,105 tokens，压缩率99.5%）
+
+### 基于文件的 ReMeLight 记忆系统架构
+
+[CoPaw MemoryManager](https://github.com/agentscope-ai/CoPaw/blob/main/src/copaw/agents/memory/memory_manager.py) 继承
+`ReMeLight`，将记忆能力集成到 Agent 推理流程中：
+
+```mermaid
+graph LR
+    Agent[Agent] -->|每轮推理前| Hook[pre_reasoning_hook]
+    Hook --> TC[compact_tool_result<br>压缩工具输出]
+    TC --> CC[check_context<br>Token 计数]
+    CC -->|超限| CM[compact_memory<br>生成摘要]
+    CC -->|超限| SM[summary_memory<br>异步持久化]
+    SM -->|ReAct + FileIO| Files[memory/*.md]
+    CC -->|超限| MMC[mark_messages_compressed<br>持久化原始对话]
+    MMC --> Dialog[dialog/*.jsonl]
+    Agent -->|主动调用| Search[memory_search<br>向量+BM25]
+    Agent -->|会话内存| InMem[ReMeInMemoryMemory<br>Token感知内存]
+    InMem -->|压缩/清空| Dialog
+    Files -.->|FileWatcher| Store[(FileStore<br>向量+FTS索引)]
+    Search --> Store
 ```
 
 ---
 
-## 🚀 快速开始
+#### 1. check_context — 上下文检查
 
-### 启动 HTTP 服务
+[ContextChecker](reme/memory/file_based/components/context_checker.py) 基于 Token 计数判断上下文是否超限，自动拆分为「待压缩」和「保留」两组消息。
 
-```bash
-reme \
-  backend=http \
-  http.port=8002 \
-  llm.default.model_name=qwen3-30b-a3b-thinking-2507 \
-  embedding_model.default.model_name=text-embedding-v4 \
-  vector_store.default.backend=local
+```mermaid
+graph LR
+    M[messages] --> H[AsMsgHandler<br>Token 计数]
+    H --> C{total > threshold?}
+    C -->|否| K[返回全部消息]
+    C -->|是| S[从尾部向前保留<br>reserve tokens]
+    S --> CP[messages_to_compact<br>早期消息]
+    S --> KP[messages_to_keep<br>近期消息]
+    S --> V{is_valid<br>工具调用对齐?}
 ```
 
-### 启动 MCP Server
-
-```bash
-reme \
-  backend=mcp \
-  mcp.transport=stdio \
-  llm.default.model_name=qwen3-30b-a3b-thinking-2507 \
-  embedding_model.default.model_name=text-embedding-v4 \
-  vector_store.default.backend=local
-```
-
-### 核心 API 用法
-
-#### 任务记忆管理
-
-```python
-import requests
-
-# 经验总结：从执行轨迹中学习
-response = requests.post("http://localhost:8002/summary_task_memory", json={
-    "workspace_id": "task_workspace",
-    "trajectories": [
-        {"messages": [{"role": "user", "content": "Help me create a project plan"}], "score": 1.0}
-    ]
-})
-
-# 记忆检索：获取相关经验
-response = requests.post("http://localhost:8002/retrieve_task_memory", json={
-    "workspace_id": "task_workspace",
-    "query": "How to efficiently manage project progress?",
-    "top_k": 1
-})
-```
-
-<details>
-<summary>Python 导入版本</summary>
-
-```python
-import asyncio
-from reme_ai import ReMeApp
-
-async def main():
-    async with ReMeApp(
-        "llm.default.model_name=qwen3-30b-a3b-thinking-2507",
-        "embedding_model.default.model_name=text-embedding-v4",
-        "vector_store.default.backend=memory"
-    ) as app:
-        # 经验总结：从执行轨迹中学习
-        result = await app.async_execute(
-            name="summary_task_memory",
-            workspace_id="task_workspace",
-            trajectories=[
-                {
-                    "messages": [
-                        {"role": "user", "content": "Help me create a project plan"}
-                    ],
-                    "score": 1.0
-                }
-            ]
-        )
-        print(result)
-
-        # 记忆检索：获取相关经验
-        result = await app.async_execute(
-            name="retrieve_task_memory",
-            workspace_id="task_workspace",
-            query="How to efficiently manage project progress?",
-            top_k=1
-        )
-        print(result)
-
-if __name__ == "__main__":
-    asyncio.run(main())
-```
-
-</details>
-
-<details>
-<summary>curl 版本</summary>
-
-```bash
-# 经验总结：从执行轨迹中学习
-curl -X POST http://localhost:8002/summary_task_memory \
-  -H "Content-Type: application/json" \
-  -d '{
-    "workspace_id": "task_workspace",
-    "trajectories": [
-      {"messages": [{"role": "user", "content": "Help me create a project plan"}], "score": 1.0}
-    ]
-  }'
-
-# 记忆检索：获取相关经验
-curl -X POST http://localhost:8002/retrieve_task_memory \
-  -H "Content-Type: application/json" \
-  -d '{
-    "workspace_id": "task_workspace",
-    "query": "How to efficiently manage project progress?",
-    "top_k": 1
-  }'
-```
-
-</details>
-
-#### 个人记忆管理
-
-```python
-# 记忆整合：从用户交互中学习
-response = requests.post("http://localhost:8002/summary_personal_memory", json={
-    "workspace_id": "task_workspace",
-    "trajectories": [
-        {"messages":
-            [
-                {"role": "user", "content": "I like to drink coffee while working in the morning"},
-                {"role": "assistant",
-                 "content": "I understand, you prefer to start your workday with coffee to stay energized"}
-            ]
-        }
-    ]
-})
-
-# 记忆检索：获取个人记忆片段
-response = requests.post("http://localhost:8002/retrieve_personal_memory", json={
-    "workspace_id": "task_workspace",
-    "query": "What are the user's work habits?",
-    "top_k": 5
-})
-```
-
-<details>
-<summary>Python 导入版本</summary>
-
-```python
-import asyncio
-from reme_ai import ReMeApp
-
-async def main():
-    async with ReMeApp(
-        "llm.default.model_name=qwen3-30b-a3b-thinking-2507",
-        "embedding_model.default.model_name=text-embedding-v4",
-        "vector_store.default.backend=memory"
-    ) as app:
-        # 记忆整合：从用户交互中学习
-        result = await app.async_execute(
-            name="summary_personal_memory",
-            workspace_id="task_workspace",
-            trajectories=[
-                {
-                    "messages": [
-                        {"role": "user", "content": "I like to drink coffee while working in the morning"},
-                        {"role": "assistant",
-                         "content": "I understand, you prefer to start your workday with coffee to stay energized"}
-                    ]
-                }
-            ]
-        )
-        print(result)
-
-        # 记忆检索：获取个人记忆片段
-        result = await app.async_execute(
-            name="retrieve_personal_memory",
-            workspace_id="task_workspace",
-            query="What are the user's work habits?",
-            top_k=5
-        )
-        print(result)
-
-if __name__ == "__main__":
-    asyncio.run(main())
-```
-
-</details>
-
-<details>
-<summary>curl 版本</summary>
-
-```bash
-# 记忆整合：从用户交互中学习
-curl -X POST http://localhost:8002/summary_personal_memory \
-  -H "Content-Type: application/json" \
-  -d '{
-    "workspace_id": "task_workspace",
-    "trajectories": [
-      {"messages": [
-        {"role": "user", "content": "I like to drink coffee while working in the morning"},
-        {"role": "assistant", "content": "I understand, you prefer to start your workday with coffee to stay energized"}
-      ]}
-    ]
-  }'
-
-# 记忆检索：获取个人记忆片段
-curl -X POST http://localhost:8002/retrieve_personal_memory \
-  -H "Content-Type: application/json" \
-  -d '{
-    "workspace_id": "task_workspace",
-    "query": "What are the user'\''s work habits?",
-    "top_k": 5
-  }'
-```
-
-</details>
-
-#### 工具记忆管理
-
-```python
-import requests
-
-# 记录工具调用结果
-response = requests.post("http://localhost:8002/add_tool_call_result", json={
-    "workspace_id": "tool_workspace",
-    "tool_call_results": [
-        {
-            "create_time": "2025-10-21 10:30:00",
-            "tool_name": "web_search",
-            "input": {"query": "Python asyncio tutorial", "max_results": 10},
-            "output": "Found 10 relevant results...",
-            "token_cost": 150,
-            "success": True,
-            "time_cost": 2.3
-        }
-    ]
-})
-
-# 从历史生成使用指南
-response = requests.post("http://localhost:8002/summary_tool_memory", json={
-    "workspace_id": "tool_workspace",
-    "tool_names": "web_search"
-})
-
-# 在使用前检索工具指南
-response = requests.post("http://localhost:8002/retrieve_tool_memory", json={
-    "workspace_id": "tool_workspace",
-    "tool_names": "web_search"
-})
-```
-
-<details>
-<summary>Python 导入版本</summary>
-
-```python
-import asyncio
-from reme_ai import ReMeApp
-
-async def main():
-    async with ReMeApp(
-        "llm.default.model_name=qwen3-30b-a3b-thinking-2507",
-        "embedding_model.default.model_name=text-embedding-v4",
-        "vector_store.default.backend=memory"
-    ) as app:
-        # 记录工具调用结果
-        result = await app.async_execute(
-            name="add_tool_call_result",
-            workspace_id="tool_workspace",
-            tool_call_results=[
-                {
-                    "create_time": "2025-10-21 10:30:00",
-                    "tool_name": "web_search",
-                    "input": {"query": "Python asyncio tutorial", "max_results": 10},
-                    "output": "Found 10 relevant results...",
-                    "token_cost": 150,
-                    "success": True,
-                    "time_cost": 2.3
-                }
-            ]
-        )
-        print(result)
-
-        # 从历史生成使用指南
-        result = await app.async_execute(
-            name="summary_tool_memory",
-            workspace_id="tool_workspace",
-            tool_names="web_search"
-        )
-        print(result)
-
-        # 在使用前检索工具指南
-        result = await app.async_execute(
-            name="retrieve_tool_memory",
-            workspace_id="tool_workspace",
-            tool_names="web_search"
-        )
-        print(result)
-
-if __name__ == "__main__":
-    asyncio.run(main())
-```
-
-</details>
-
-<details>
-<summary>curl 版本</summary>
-
-```bash
-# 记录工具调用结果
-curl -X POST http://localhost:8002/add_tool_call_result \
-  -H "Content-Type: application/json" \
-  -d '{
-    "workspace_id": "tool_workspace",
-    "tool_call_results": [
-      {
-        "create_time": "2025-10-21 10:30:00",
-        "tool_name": "web_search",
-        "input": {"query": "Python asyncio tutorial", "max_results": 10},
-        "output": "Found 10 relevant results...",
-        "token_cost": 150,
-        "success": true,
-        "time_cost": 2.3
-      }
-    ]
-  }'
-
-# 从历史生成使用指南
-curl -X POST http://localhost:8002/summary_tool_memory \
-  -H "Content-Type: application/json" \
-  -d '{
-    "workspace_id": "tool_workspace",
-    "tool_names": "web_search"
-  }'
-
-# 在使用前检索工具指南
-curl -X POST http://localhost:8002/retrieve_tool_memory \
-  -H "Content-Type: application/json" \
-  -d '{
-    "workspace_id": "tool_workspace",
-    "tool_names": "web_search"
-  }'
-```
-
-</details>
-
-#### 工作记忆管理
-
-```python
-import requests
-
-# 对长对话 / 长流程的工作记忆进行压缩与总结
-response = requests.post("http://localhost:8002/summary_working_memory", json={
-    "messages": [
-        {
-            "role": "system",
-            "content": "You are a helpful assistant. First use `Grep` to find the line numbers that match the keywords or regular expressions, and then use `ReadFile` to read the code around those locations. If no matches are found, never give up; try different parameters, such as searching with only part of the keywords. After `Grep`, use the `ReadFile` command to view content starting from a specified `offset` and `limit`, and do not exceed 100 lines. If the current content is insufficient, you can continue trying different `offset` and `limit` values with the `ReadFile` command."
-        },
-        {
-            "role": "user",
-            "content": "搜索下reme项目的的README内容"
-        },
-        {
-            "role": "assistant",
-            "content": "",
-            "tool_calls": [
-                {
-                    "index": 0,
-                    "id": "call_6596dafa2a6a46f7a217da",
-                    "function": {
-                        "arguments": "{\"query\": \"readme\"}",
-                        "name": "web_search"
-                    },
-                    "type": "function"
-                }
-            ]
-        },
-        {
-            "role": "tool",
-            "content": "ultra large context , over 50000 tokens......"
-        },
-        {
-            "role": "user",
-            "content": "根据readme回答task memory在appworld的效果是多少，需要具体的数值"
-        }
-    ],
-    "working_summary_mode": "auto",
-    "compact_ratio_threshold": 0.75,
-    "max_total_tokens": 20000,
-    "max_tool_message_tokens": 2000,
-    "group_token_threshold": 4000,
-    "keep_recent_count": 2,
-    "store_dir": "test_working_memory",
-    "chat_id": "demo_chat_id"
-})
-```
-
-<details>
-<summary>Python 导入版本</summary>
-
-```python
-import asyncio
-from reme_ai import ReMeApp
-
-
-async def main():
-    async with ReMeApp(
-        "llm.default.model_name=qwen3-30b-a3b-thinking-2507",
-        "embedding_model.default.model_name=text-embedding-v4",
-        "vector_store.default.backend=memory"
-    ) as app:
-        # 对长对话 / 长流程的工作记忆进行压缩与总结
-        result = await app.async_execute(
-            name="summary_working_memory",
-            messages=[
-                {
-                    "role": "system",
-                    "content": "You are a helpful assistant. First use `Grep` to find the line numbers that match the keywords or regular expressions, and then use `ReadFile` to read the code around those locations. If no matches are found, never give up; try different parameters, such as searching with only part of the keywords. After `Grep`, use the `ReadFile` command to view content starting from a specified `offset` and `limit`, and do not exceed 100 lines. If the current content is insufficient, you can continue trying different `offset` and `limit` values with the `ReadFile` command."
-                },
-                {
-                    "role": "user",
-                    "content": "搜索下reme项目的的README内容"
-                },
-                {
-                    "role": "assistant",
-                    "content": "",
-                    "tool_calls": [
-                        {
-                            "index": 0,
-                            "id": "call_6596dafa2a6a46f7a217da",
-                            "function": {
-                                "arguments": "{\"query\": \"readme\"}",
-                                "name": "web_search"
-                            },
-                            "type": "function"
-                        }
-                    ]
-                },
-                {
-                    "role": "tool",
-                    "content": "ultra large context , over 50000 tokens......"
-                },
-                {
-                    "role": "user",
-                    "content": "根据readme回答task memory在appworld的效果是多少，需要具体的数值"
-                }
-            ],
-            working_summary_mode="auto",
-            compact_ratio_threshold=0.75,
-            max_total_tokens=20000,
-            max_tool_message_tokens=2000,
-            group_token_threshold=4000,
-            keep_recent_count=2,
-            store_dir="test_working_memory",
-            chat_id="demo_chat_id",
-        )
-        print(result)
-
-
-if __name__ == "__main__":
-    asyncio.run(main())
-```
-
-</details>
-
-<details>
-<summary>curl 版本</summary>
-
-```bash
-curl -X POST http://localhost:8002/summary_working_memory \
-  -H "Content-Type: application/json" \
-  -d '{
-    "messages": [
-      {
-        "role": "system",
-        "content": "You are a helpful assistant. First use `Grep` to find the line numbers that match the keywords or regular expressions, and then use `ReadFile` to read the code around those locations. If no matches are found, never give up; try different parameters, such as searching with only part of the keywords. After `Grep`, use the `ReadFile` command to view content starting from a specified `offset` and `limit`, and do not exceed 100 lines. If the current content is insufficient, you can continue trying different `offset` and `limit` values with the `ReadFile` command."
-      },
-      {
-        "role": "user",
-        "content": "搜索下reme项目的的README内容"
-      },
-      {
-        "role": "assistant",
-        "content": "",
-        "tool_calls": [
-          {
-            "index": 0,
-            "id": "call_6596dafa2a6a46f7a217da",
-            "function": {
-              "arguments": "{\"query\": \"readme\"}",
-              "name": "web_search"
-            },
-            "type": "function"
-          }
-        ]
-      },
-      {
-        "role": "tool",
-        "content": "ultra large context , over 50000 tokens......"
-      },
-      {
-        "role": "user",
-        "content": "根据readme回答task memory在appworld的效果是多少，需要具体的数值"
-      }
-    ],
-    "working_summary_mode": "auto",
-    "compact_ratio_threshold": 0.75,
-    "max_total_tokens": 20000,
-    "max_tool_message_tokens": 2000,
-    "group_token_threshold": 4000,
-    "keep_recent_count": 2,
-    "store_dir": "test_working_memory",
-    "chat_id": "demo_chat_id"
-  }'
-```
-
-</details>
+- **核心逻辑**：从尾部向前保留 `reserve` tokens，超出部分标记为待压缩
+- **完整性保证**：不拆分 user-assistant 对话对，不拆分 tool_use/tool_result 配对
 
 ---
 
-## 📦 开箱即用的记忆库
+#### 2. compact_memory — 对话压缩
 
-ReMe 提供一个**记忆库**，包含预先提取的、生产就绪的记忆，智能体可以立即加载和使用：
+[Compactor](reme/memory/file_based/components/compactor.py) 使用 ReActAgent 将历史对话压缩为**结构化上下文摘要**。
 
-### 可用记忆包
-
-| 记忆包                | 领域       | 规模           | 描述                                                   |
-|----------------------|------------|----------------|--------------------------------------------------------|
-| **`appworld.jsonl`** | 任务执行   | ~100 条记忆    | 复杂任务规划模式、多步骤工作流和错误恢复策略              |
-| **`bfcl_v3.jsonl`**  | 工具使用   | ~150 条记忆    | 函数调用模式、参数优化和工具选择策略                      |
-
-### 加载预构建记忆
-
-```python
-# 加载内置记忆
-response = requests.post("http://localhost:8002/vector_store", json={
-    "workspace_id": "appworld",
-    "action": "load",
-    "path": "./docs/library/"
-})
-
-# 查询相关记忆
-response = requests.post("http://localhost:8002/retrieve_task_memory", json={
-    "workspace_id": "appworld",
-    "query": "How to navigate to settings and update user profile?",
-    "top_k": 1
-})
+```mermaid
+graph LR
+    M[messages] --> H[AsMsgHandler<br>format_msgs_to_str]
+    H --> A[ReActAgent<br>reme_compactor]
+    P[previous_summary] -->|增量更新| A
+    A --> S[结构化摘要<br>Goal/Progress/Decisions...]
 ```
 
-<details>
-<summary>Python 导入版本</summary>
+**摘要结构**（上下文检查点）：
+
+| 字段                    | 说明                 |
+|-----------------------|--------------------|
+| `## Goal`             | 用户目标               |
+| `## Constraints`      | 约束和偏好              |
+| `## Progress`         | 任务进展               |
+| `## Key Decisions`    | 关键决策               |
+| `## Next Steps`       | 下一步计划              |
+| `## Critical Context` | 文件路径、函数名、错误信息等关键数据 |
+
+- **增量更新**：传入 `previous_summary` 时，自动将新对话与旧摘要合并
+
+---
+
+#### 3. summary_memory — 记忆持久化
+
+[Summarizer](reme/memory/file_based/components/summarizer.py) 采用 **ReAct + 文件工具** 模式，让 AI 自主决定写什么、写到哪。
+
+```mermaid
+graph LR
+    M[messages] --> A[ReActAgent<br>reme_summarizer]
+    A -->|read| R[读取 memory/YYYY-MM-DD.md]
+    R --> T{思考: 如何合并?}
+    T -->|write| W[覆盖写入]
+    T -->|edit| E[精确替换]
+    W --> F[memory/YYYY-MM-DD.md]
+    E --> F
+```
+
+**文件工具**（[FileIO](reme/memory/file_based/tools/file_io.py)）：
+
+| 工具      | 功能      |
+|---------|---------|
+| `read`  | 读取文件内容  |
+| `write` | 覆盖写入文件  |
+| `edit`  | 精确匹配后替换 |
+
+---
+
+#### 4. compact_tool_result — 工具结果压缩
+
+[ToolResultCompactor](reme/memory/file_based/components/tool_result_compactor.py) 解决工具输出过长导致上下文膨胀的问题。
+
+```mermaid
+graph LR
+    M[messages] --> L{遍历 tool_result<br>len > threshold?}
+    L -->|否| K[保留原样]
+    L -->|是| T[truncate_text<br>截断到 threshold]
+    T --> S[完整内容写入<br>tool_result/uuid.txt]
+    S --> R[消息追加文件路径引用]
+    R --> C[cleanup_expired_files<br>清理过期文件]
+```
+
+- **自动清理**：过期文件（超过 `retention_days`）在 `start`/`close`/`compact_tool_result` 时自动删除
+
+---
+
+#### 5. memory_search — 记忆检索
+
+[MemorySearch](reme/memory/file_based/tools/memory_search.py) 提供**向量 + BM25 混合检索**能力。
+
+```mermaid
+graph LR
+    Q[query] --> E[Embedding<br>向量化]
+    E --> V[vector_search<br>语义相似]
+    Q --> B[BM25<br>关键词匹配]
+    V -->|" weight: 0.7 "| M[去重 + 加权融合]
+    B -->|" weight: 0.3 "| M
+    M --> F[min_score 过滤]
+    F --> R[Top-N 结果]
+```
+
+- **融合机制**：向量权重 0.7 + BM25 权重 0.3，兼顾语义相似和精确匹配
+
+---
+
+#### 6. ReMeInMemoryMemory — 会话内存
+
+[ReMeInMemoryMemory](reme/memory/file_based/reme_in_memory_memory.py) 扩展 AgentScope 的 `InMemoryMemory`，提供 Token
+感知的内存管理和原始对话持久化能力。
+
+```mermaid
+graph LR
+    C[content] --> G[get_memory<br>exclude_mark=COMPRESSED]
+    G --> F[排除已压缩消息]
+    F --> P{prepend_summary?}
+    P -->|是| S[头部插入 previous-summary]
+    S --> O[输出 messages]
+    P -->|否| O
+    M[mark_messages_compressed] --> D[持久化到 dialog/YYYY-MM-DD.jsonl]
+    D --> R[从内存移除]
+```
+
+| 功能                               | 说明                    |
+|----------------------------------|-----------------------|
+| `get_memory`                     | 按标记过滤，自动追加压缩摘要        |
+| `estimate_tokens`                | 估算上下文 Token 用量        |
+| `state_dict` / `load_state_dict` | 状态序列化/反序列化（会话持久化）     |
+| `mark_messages_compressed`       | 标记消息压缩并持久化到 dialog 目录 |
+| `clear_content`                  | 持久化所有消息后清空内存          |
+
+**原始对话持久化**：当消息被压缩或清空时，自动保存到 `{dialog_path}/{date}.jsonl`，每行一条 JSON 格式的消息记录。
+
+---
+
+#### 7. pre_reasoning_hook — 推理前预处理
+
+整合上述组件的统一入口，在每轮推理前自动管理上下文。
+
+```mermaid
+graph LR
+    M[messages] --> TC[compact_tool_result<br>压缩超长工具输出]
+    TC --> CC[check_context<br>计算剩余空间]
+    CC --> D{messages_to_compact<br>非空?}
+    D -->|否| K[返回原消息 + 原摘要]
+    D -->|是| V{is_valid?}
+    V -->|否| K
+    V -->|是| CM[compact_memory<br>同步生成摘要]
+    V -->|是| SM[add_async_summary_task<br>异步持久化]
+    CM --> R[返回 messages_to_keep + 新摘要]
+```
+
+**执行流程**：
+
+1. `compact_tool_result` — 压缩超长工具输出
+2. `check_context` — 检查上下文是否超限
+3. `compact_memory` — 生成压缩摘要（同步）
+4. `summary_memory` — 持久化记忆（异步后台）
+
+---
+
+## 🗃️ 基于向量库的记忆系统
+
+[ReMe Vector Based](reme/reme.py) 是基于向量库的记忆系统核心类，支持三种记忆类型的统一管理：
+
+| 记忆类型         | 用途               |
+|--------------|------------------|
+| **个人记忆**     | 记录用户偏好、习惯        |
+| **任务/程序性记忆** | 记录任务执行经验、成功/失败模式 |
+| **工具记忆**     | 记录工具使用经验、参数优化    |
+
+### 核心能力
+
+| 方法                 | 功能       | 说明             |
+|--------------------|----------|----------------|
+| `summarize_memory` | 🧠 记忆总结  | 从对话中自动提取并存储记忆  |
+| `retrieve_memory`  | 🔍 记忆检索  | 根据查询检索相关记忆     |
+| `add_memory`       | ➕ 添加记忆   | 手动添加记忆到向量库     |
+| `get_memory`       | 📖 获取记忆  | 通过 ID 获取单条记忆   |
+| `update_memory`    | ✏️ 更新记忆  | 更新已有记忆的内容或元数据  |
+| `delete_memory`    | 🗑️ 删除记忆 | 删除指定记忆         |
+| `list_memory`      | 📋 列出记忆  | 列出某类记忆，支持过滤和排序 |
+
+### 安装与环境变量
+
+安装和环境变量配置与 [ReMeLight 一致](#安装)，通过环境变量设置 API 密钥，可写在项目根目录的 `.env` 文件中。
+
+
+### Python 使用
 
 ```python
 import asyncio
-from reme_ai import ReMeApp
+
+from reme import ReMe
+
 
 async def main():
-    async with ReMeApp(
-        "llm.default.model_name=qwen3-30b-a3b-thinking-2507",
-        "embedding_model.default.model_name=text-embedding-v4",
-        "vector_store.default.backend=memory"
-    ) as app:
-        # 加载内置记忆
-        result = await app.async_execute(
-            name="vector_store",
-            workspace_id="appworld",
-            action="load",
-            path="./docs/library/"
-        )
-        print(result)
+    # 初始化 ReMe
+    reme = ReMe(
+        working_dir=".reme",
+        default_llm_config={
+            "backend": "openai",
+            "model_name": "qwen3.5-plus",
+        },
+        default_embedding_model_config={
+            "backend": "openai",
+            "model_name": "text-embedding-v4",
+            "dimensions": 1024,
+        },
+        default_vector_store_config={
+            "backend": "local",  # 支持 local/chroma/qdrant/elasticsearch
+        },
+    )
+    await reme.start()
 
-        # 查询相关记忆
-        result = await app.async_execute(
-            name="retrieve_task_memory",
-            workspace_id="appworld",
-            query="How to navigate to settings and update user profile?",
-            top_k=1
-        )
-        print(result)
+    messages = [
+        {"role": "user", "content": "帮我写一个 Python 脚本", "time_created": "2026-02-28 10:00:00"},
+        {"role": "assistant", "content": "好的，我来帮你写", "time_created": "2026-02-28 10:00:05"},
+    ]
+
+    # 1. 从对话中总结记忆（自动提取用户偏好、任务经验等）
+    result = await reme.summarize_memory(
+        messages=messages,
+        user_name="alice",  # 个人记忆
+        # task_name="code_writing",  # 任务记忆
+    )
+    print(f"总结结果: {result}")
+
+    # 2. 检索相关记忆
+    memories = await reme.retrieve_memory(
+        query="Python 编程",
+        user_name="alice",
+        # task_name="code_writing",
+    )
+    print(f"检索结果: {memories}")
+
+    # 3. 手动添加记忆
+    memory_node = await reme.add_memory(
+        memory_content="用户喜欢简洁的代码风格",
+        user_name="alice",
+    )
+    print(f"添加的记忆: {memory_node}")
+    memory_id = memory_node.memory_id
+
+    # 4. 通过 ID 获取单条记忆
+    fetched_memory = await reme.get_memory(memory_id=memory_id)
+    print(f"获取的记忆: {fetched_memory}")
+
+    # 5. 更新记忆内容
+    updated_memory = await reme.update_memory(
+        memory_id=memory_id,
+        user_name="alice",
+        memory_content="用户喜欢简洁且带注释的代码风格",
+    )
+    print(f"更新后的记忆: {updated_memory}")
+
+    # 6. 列出用户的所有记忆（支持过滤和排序）
+    all_memories = await reme.list_memory(
+        user_name="alice",
+        limit=10,
+        sort_key="time_created",
+        reverse=True,
+    )
+    print(f"用户记忆列表: {all_memories}")
+
+    # 7. 删除指定记忆
+    await reme.delete_memory(memory_id=memory_id)
+    print(f"已删除记忆: {memory_id}")
+
+    # 8. 删除所有记忆（谨慎使用）
+    # await reme.delete_all()
+
+    await reme.close()
+
 
 if __name__ == "__main__":
     asyncio.run(main())
 ```
 
-</details>
+### 技术架构
+
+```mermaid
+graph LR
+    User[用户 / Agent] --> ReMe[Vector Based ReMe]
+    ReMe --> Summarize[记忆总结]
+    ReMe --> Retrieve[记忆检索]
+    ReMe --> CRUD[增删改查]
+    Summarize --> PersonalSum[PersonalSummarizer]
+    Summarize --> ProceduralSum[ProceduralSummarizer]
+    Summarize --> ToolSum[ToolSummarizer]
+    Retrieve --> PersonalRet[PersonalRetriever]
+    Retrieve --> ProceduralRet[ProceduralRetriever]
+    Retrieve --> ToolRet[ToolRetriever]
+    PersonalSum --> VectorStore[向量数据库]
+    ProceduralSum --> VectorStore
+    ToolSum --> VectorStore
+    PersonalRet --> VectorStore
+    ProceduralRet --> VectorStore
+    ToolRet --> VectorStore
+```
+
+### 实验效果
+
+本实验部分在 LoCoMo和HaluMem 两个数据集上进行评测，实验设置如下：
+
+1. **ReMe 使用模型**：如各表 backbone 列所示。
+2. **评估使用模型**：采用 LLM-as-a-Judge 协议（参照 MemOS）——每条回答由 GPT-4o-mini 裁判模型打分。
+
+实验设置尽量与各基线论文保持一致，以复用其公开结果。
+
+### LoCoMo
+
+| Method   | Single Hop | Multi Hop | Temporal  | Open Domain | Overall   |
+|----------|------------|-----------|-----------|-------------|-----------|
+| MemoryOS | 62.43      | 56.50     | 37.18     | 40.28       | 54.70     |
+| Mem0     | 66.71      | 58.16     | 55.45     | 40.62       | 61.00     |
+| MemU     | 72.77      | 62.41     | 33.96     | 46.88       | 61.15     |
+| MemOS    | 81.45      | 69.15     | 72.27     | 60.42       | 75.87     |
+| HiMem    | 89.22      | 70.92     | 74.77     | 54.86       | 80.71     |
+| Zep      | 88.11      | 71.99     | 74.45     | 66.67       | 81.06     |
+| TiMem    | 81.43      | 62.20     | 77.63     | 52.08       | 75.30     |
+| TSM      | 84.30      | 66.67     | 71.03     | 58.33       | 76.69     |
+| MemR3    | 89.44      | 71.39     | 76.22     | 61.11       | 81.55     |
+| **ReMe** | **89.89**  | **82.98** | **83.80** | **71.88**   | **86.23** |
+
+### HaluMem
+
+| Method      | Memory Integrity | Memory Accuracy | QA Accuracy |
+|-------------|------------------|-----------------|-------------|
+| MemoBase    | 14.55            | 92.24           | 35.53       |
+| Supermemory | 41.53            | 90.32           | 54.07       |
+| Mem0        | 42.91            | 86.26           | 53.02       |
+| ProMem      | **73.80**        | 89.47           | 62.26       |
+| **ReMe**    | 67.72            | **94.06**       | **88.78**   |
 
 ---
 
-## 🧪 实验结果
+## 🧪 程序化记忆论文
 
-### 🌍 [Appworld 实验](docs/cookbook/appworld/quickstart.md)
+> 我们的程序性（任务）记忆论文已在 [arXiv](https://arxiv.org/abs/2512.10696) 发布
+
+### 🌍 [Appworld 实验](benchmark/appworld/quickstart.md)
 
 我们在 Appworld 环境上使用 Qwen3-8B（非思考模式）进行评测：
 
-| 方法       | Avg@4               | Pass@4              |
-|-----------|-------------------|-------------------|
-| 无 ReMe   |  0.1497              | 0.3285              |
-| 使用 ReMe  | 0.1706 **(+2.09%)** | 0.3631 **(+3.46%)** |
+| 方法      | Avg@4               | Pass@4              |
+|---------|---------------------|---------------------|
+| 无 ReMe  | 0.1497              | 0.3285              |
+| 使用 ReMe | 0.1706 **(+2.09%)** | 0.3631 **(+3.46%)** |
 
 Pass@K 衡量在生成 K 个候选中，至少一个成功完成任务（score=1）的概率。
 当前实验使用的是内部 AppWorld 环境，可能与对外版本存在轻微差异。
 
-关于如何复现实验的更多细节，见 [quickstart.md](docs/cookbook/appworld/quickstart.md)。
+关于如何复现实验的更多细节，见 [quickstart.md](benchmark/appworld/quickstart.md)
 
-### 🔧 [BFCL-V3 实验](docs/cookbook/bfcl/quickstart.md)
+### 🔧 [BFCL-V3 实验](benchmark/bfcl/quickstart.md)
 
 我们在 BFCL-V3 multi-turn-base 任务（随机划分 50 train / 150 val）上，使用 Qwen3-8B（思考模式）进行评测：
 
-| 方法       | Avg@4            | Pass@4              |
-|------------|-----------------|---------------------|
-| 无 ReMe    | 0.4033              | 0.5955              |
-| 使用 ReMe  | 0.4450 **(+4.17%)** | 0.6577 **(+6.22%)** |
+| 方法      | Avg@4               | Pass@4              |
+|---------|---------------------|---------------------|
+| 无 ReMe  | 0.4033              | 0.5955              |
+| 使用 ReMe | 0.4450 **(+4.17%)** | 0.6577 **(+6.22%)** |
 
-### 🧊 [Frozenlake 实验](docs/cookbook/frozenlake/quickstart.md)
-
-|                                             无 ReMe                                              |                                              使用 ReMe                                               |
-|:------------------------------------------------------------------------------------------------:|:----------------------------------------------------------------------------------------------------:|
-| <p align="center"><img src="docs/_static/figure/frozenlake_failure.gif" alt="失败示例" width="30%"></p> | <p align="center"><img src="docs/_static/figure/frozenlake_success.gif" alt="成功示例" width="30%"></p> |
-
-我们在 100 张随机 frozenlake 地图上，使用 qwen3-8b 进行测试：
-
-| 方法       | 通过率          |
-|------------|-----------------|
-| 无 ReMe    | 0.66            |
-| 使用 ReMe  | 0.72 **(+6.0%)** |
-
-更多复现实验细节见 [quickstart.md](docs/cookbook/frozenlake/quickstart.md)。
-
-### 🛠️ [工具记忆基准](docs/tool_memory/tool_bench.md)
-
-我们在一个受控基准上，使用三个模拟搜索工具与 Qwen3-30B-Instruct 评估工具记忆的效果：
-
-| 场景                  | 平均分 | 提升       |
-|-----------------------|--------|------------|
-| 训练集（无记忆）      | 0.650  | -          |
-| 测试集（无记忆）      | 0.672  | 基线       |
-| **测试集（使用记忆）** | **0.772** | **+14.88%** |
-
-**关键结论：**
-- 工具记忆可以基于历史表现进行数据驱动的工具选择
-- 通过学习参数配置，成功率约提升 15%
-
-更多细节见 [tool_bench.md](docs/tool_memory/tool_bench.md) 与实现代码 [run_reme_tool_bench.py](cookbook/tool_memory/run_reme_tool_bench.py)。
-
----
-
-## 📚 资源
-
-### 快速入门
-- **[Quick Start](./cookbook/simple_demo)**：实用示例，可立即使用
-  - [工具记忆 Demo](cookbook/simple_demo/use_tool_memory_demo.py)：工具记忆的完整生命周期演示
-  - [工具记忆基准](cookbook/tool_memory/run_reme_tool_bench.py)：评估工具记忆效果
-
-### 集成指南
-- **[直接 Python 导入](docs/cookbook/working/quick_start.md)**：将 ReMe 直接嵌入到你的智能体代码中
-- **[HTTP 服务 API](docs/vector_store_api_guide.md)**：用于多智能体系统的 RESTful API
-- **[MCP 协议](docs/mcp_quick_start.md)**：与 Claude Desktop 和 MCP 兼容客户端集成
-
-### 记忆系统配置
-- **[个人记忆](docs/personal_memory)**：用户偏好学习和上下文自适应
-- **[任务记忆](docs/task_memory)**：程序性知识提取和复用
-- **[工具记忆](docs/tool_memory)**：数据驱动的工具选择和优化
-- **[工作记忆](docs/work_memory/message_offload.md)**：长流程智能体的短期上下文管理
-
-### 高级主题
-- **[算子管道](reme_ai/config/default.yaml)**：通过修改算子链来自定义记忆处理工作流
-- **[向量存储后端](docs/vector_store_api_guide.md)**：配置本地、Elasticsearch、Qdrant 或 ChromaDB 存储
-- **[案例集](./cookbook)**：真实场景的用例和最佳实践
-
----
+关于如何复现实验的更多细节，见 [quickstart.md](benchmark/bfcl/quickstart.md)
 
 ## ⭐ 社区与支持
 
-- **Star & Watch**：Star 可以让更多智能体开发者发现 ReMe；Watch 能帮助你第一时间获知新版本与特性。
+- **Star 与 Watch**：Star 可让更多智能体开发者发现 ReMe；Watch 可助你第一时间获知新版本与特性。
 - **分享你的成果**：在 Issue 或 Discussion 中分享 ReMe 为你的智能体解锁了什么——我们非常乐意展示社区的优秀案例。
-- **需要新功能？** 提交 Feature Request，我们将一起完善它。
+- **需要新功能？** 提交 Feature Request，我们将与社区一起完善。
+- **代码贡献**：欢迎任何形式的代码贡献，请参阅 [贡献指南](docs/contribution.md)。
+- **致谢**：感谢 OpenClaw、Mem0、MemU、CoPaw 等优秀的开源项目，为项目带来诸多启发与帮助。
 
----
+### 贡献者
 
-## 🤝 参与贡献
+感谢所有为 ReMe 做出贡献的朋友们：
 
-我们相信，最好的记忆系统来自社区的集体智慧。欢迎贡献 👉[贡献指南](docs/contribution.md)：
-
-### 代码贡献
-
-- **新算子**：开发自定义记忆处理算子（检索、总结等）
-- **后端实现**：添加对新向量存储或 LLM 提供商的支持
-- **记忆服务**：扩展新的记忆类型或能力
-- **API 增强**：改进现有端点或添加新端点
-
-### 文档改进
-
-- **集成示例**：展示如何将 ReMe 与不同智能体框架集成
-- **算子教程**：记录自定义算子开发
-- **最佳实践指南**：分享有效的记忆管理模式
-- **用例研究**：展示 ReMe 在实际应用中的使用
+<a href="https://github.com/agentscope-ai/ReMe/graphs/contributors">
+  <img src="https://contrib.rocks/image?repo=agentscope-ai/ReMe" alt="贡献者" />
+</a>
 
 ---
 
@@ -858,34 +629,9 @@ Pass@K 衡量在生成 K 个候选中，至少一个成功完成任务（score=1
 ```bibtex
 @software{AgentscopeReMe2025,
   title = {AgentscopeReMe: Memory Management Kit for Agents},
-  author = {Li Yu and
-            Jiaji Deng and
-            Zouying Cao and
-            Weikang Zhou and
-            Tiancheng Qin and
-            Qingxu Fu and
-            Sen Huang and
-            Xianzhe Xu and
-            Zhaoyang Liu and
-            Boyin Liu},
+  author = {ReMe Team},
   url = {https://reme.agentscope.io},
   year = {2025}
-}
-
-@misc{AgentscopeReMe2025Paper,
-  title={Remember Me, Refine Me: A Dynamic Procedural Memory Framework for Experience-Driven Agent Evolution},
-  author={Zouying Cao and
-          Jiaji Deng and
-          Li Yu and
-          Weikang Zhou and
-          Zhaoyang Liu and
-          Bolin Ding and
-          Hai Zhao},
-  year={2025},
-  eprint={2512.10696},
-  archivePrefix={arXiv},
-  primaryClass={cs.AI},
-  url={https://arxiv.org/abs/2512.10696},
 }
 ```
 
@@ -897,6 +643,13 @@ Pass@K 衡量在生成 K 个候选中，至少一个成功完成任务（score=1
 
 ---
 
-## Star 历史
+## 🤔 为什么叫 ReMe？
+
+ReMe 是 **Remember Me** 和 **Refine Me** 的缩写，寓意让 AI 智能体「记住我」并在交互中「精进自我」。我们希望 ReMe
+不只是一个冷冰冰的记忆模块，而是能让智能体真正理解用户、积累经验、持续进化的伙伴。
+
+---
+
+## 📈 Star 历史
 
 [![Star History Chart](https://api.star-history.com/svg?repos=agentscope-ai/ReMe&type=Date)](https://www.star-history.com/#agentscope-ai/ReMe&Date)

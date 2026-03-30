@@ -1,5 +1,6 @@
 """schema"""
 
+from .as_msg_stat import AsBlockStat, AsMsgStat
 from .cut_point_result import CutPointResult
 from .file_metadata import FileMetadata
 from .memory_chunk import MemoryChunk
@@ -11,10 +12,12 @@ from .response import Response
 from .service_config import (
     CmdConfig,
     EmbeddingModelConfig,
+    FileWatcherConfig,
     FlowConfig,
     HttpConfig,
     LLMConfig,
     MCPConfig,
+    FileStoreConfig,
     ServiceConfig,
     TokenCounterConfig,
     VectorStoreConfig,
@@ -25,11 +28,14 @@ from .truncation_result import TruncationResult
 from .vector_node import VectorNode
 
 __all__ = [
+    "AsBlockStat",
+    "AsMsgStat",
     "CutPointResult",
     "CmdConfig",
     "ContentBlock",
     "EmbeddingModelConfig",
     "FileMetadata",
+    "FileWatcherConfig",
     "FlowConfig",
     "HttpConfig",
     "LLMConfig",
@@ -37,6 +43,7 @@ __all__ = [
     "MemoryChunk",
     "MemoryNode",
     "MemorySearchResult",
+    "FileStoreConfig",
     "Message",
     "Request",
     "Response",

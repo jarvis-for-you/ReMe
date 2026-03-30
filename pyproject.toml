@@ -33,7 +33,6 @@ classifiers = [
 keywords = ["llm", "memory", "experience", "memoryscope", "ai", "mcp", "http", "reme", "personal"]
 
 dependencies = [
-    "flowllm[reme]>=0.2.0.10",
     "sqlite-vec>=0.1.6",
     "prompt_toolkit>=3.0.52",
     "rich>=14.2.0",
@@ -44,7 +43,6 @@ dependencies = [
     "fastapi>=0.121.3",
     "fastmcp>=2.14.1",
     "httpx>=0.28.1",
-    "litellm>=1.80.0",
     "loguru>=0.7.3",
     "mcp>=1.25.0",
     "numpy>=2.2.6",
@@ -77,7 +75,16 @@ dev = [
 ]
 
 full = [
-    "reme_ai[dev,ray]"
+    "reme_ai[dev,ray,light]",
+]
+
+litellm = [
+    "litellm==1.80.0",
+]
+
+light = [
+    "agentscope==1.0.17",
+    "flowllm[reme]>=0.2.0.10",
 ]
 
 [tool.setuptools.packages.find]
@@ -113,5 +120,11 @@ remecli = "reme.reme_cli:main"
 
 [tool.pytest.ini_options]
 asyncio_default_fixture_loop_scope = "function"
+# Script-style tests that need to be run with `python test_*.py`
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_functions = ["test_*"]
+# Exclude script-style tests that require manual execution
+addopts = "--ignore=tests/test_embedding.py --ignore=tests/test_embedding_cache.py --ignore=tests/test_embedding_sync.py --ignore=tests/test_file_store.py"
 
 # python -m build && twine upload dist/*
