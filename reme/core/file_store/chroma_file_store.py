@@ -16,7 +16,7 @@ try:
     from chromadb.config import Settings
 
     CHROMADB_AVAILABLE = True
-except ImportError:
+except (ImportError, Exception):
     CHROMADB_AVAILABLE = False
     chromadb = None
     Settings = None

@@ -4,7 +4,7 @@ working_dir: .reme
 llms:
   default:
     backend: openai
-    model_name: qwen3.5-plus
+    model_name: deepseek-chat
     request_interval: 1
   #    temperature: 0.0001
 
@@ -29,14 +29,7 @@ embedding_models:
 
 vector_stores:
   default:
-<<<<<<< HEAD:reme/config/default.yaml
     backend: local
-    embedding_model: default
-=======
-    backend: chroma
-    #    backend: local
->>>>>>> main:reme/config/vector.yaml
-    collection_name: reme
     embedding_model: default
 
 token_counters:

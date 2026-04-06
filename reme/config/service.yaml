@@ -177,7 +177,7 @@ flows:
 llms:
   default:
     backend: openai
-    model_name: qwen3.5-plus
+    model_name: deepseek-chat
     request_interval: 1
 #    temperature: 0.0001
 
