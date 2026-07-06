@@ -1,15 +1,12 @@
 <p align="center">
- <img src="docs/_static/figure/reme_logo.png" alt="ReMe Logo" width="50%">
+ <img src="docs/figure/reme_logo.png" alt="ReMe Logo" width="50%">
 </p>
 
 <p align="center">
-  <a href="https://pypi.org/project/reme-ai/"><img src="https://img.shields.io/badge/python-3.10+-blue" alt="Python Version"></a>
+  <a href="https://pypi.org/project/reme-ai/"><img src="https://img.shields.io/badge/python-3.11+-blue" alt="Python Version"></a>
   <a href="https://pypi.org/project/reme-ai/"><img src="https://img.shields.io/pypi/v/reme-ai.svg?logo=pypi" alt="PyPI Version"></a>
   <a href="https://pepy.tech/project/reme-ai/"><img src="https://img.shields.io/pypi/dm/reme-ai" alt="PyPI Downloads"></a>
   <a href="https://github.com/agentscope-ai/ReMe"><img src="https://img.shields.io/github/commit-activity/m/agentscope-ai/ReMe?style=flat-square" alt="GitHub commit activity"></a>
-</p>
-
-<p align="center">
   <a href="./LICENSE"><img src="https://img.shields.io/badge/license-Apache--2.0-black" alt="License"></a>
   <a href="./README.md"><img src="https://img.shields.io/badge/English-Click-yellow" alt="English"></a>
   <a href="./README_ZH.md"><img src="https://img.shields.io/badge/简体中文-点击查看-orange" alt="简体中文"></a>
@@ -22,658 +19,311 @@
 </p>
 
 <p align="center">
-  <strong>A memory management toolkit for AI agents — Remember Me, Refine Me.</strong><br>
+  <strong>An agent memory layer that turns conversations and resources into readable, editable, searchable Markdown memory.</strong><br>
 </p>
 
-> For the older version, please refer to the [0.2.x documentation](docs/README_0_2_x.md).
+> Previous versions: [0.3.x](https://github.com/agentscope-ai/ReMe/tree/reme_v3) ·
+> [0.2.x](https://github.com/agentscope-ai/ReMe/tree/v0.2.0.6) ·
+> [MemoryScope](https://github.com/agentscope-ai/ReMe/tree/memoryscope_branch)
 
----
+🧠 ReMe is a local-first memory layer for **AI agents**. It turns conversations and resources into file-based long-term
+memory, then continuously indexes, links, and consolidates that memory for future recall.
 
-🧠 ReMe is a memory management framework designed for **AI agents**, providing
-both [file-based](#-file-based-memory-system-remelight) and [vector-based](#-vector-based-memory-system) memory systems.
+## ✨ Core Ideas
 
-It tackles two core problems of agent memory: **limited context window** (early information is truncated or lost in long
-conversations) and **stateless sessions** (new sessions cannot inherit history and always start from scratch).
+- **Memory as File**: Markdown files with frontmatter and wikilinks serve as memory nodes that both users and agents can
+  read and write directly.
+- **Self-evolving knowledge base**: Auto Memory, Auto Resource, and Auto Dream progressively transform conversations and
+  resources into long-term memories, while automatically building wikilink relationships.
+- **Progressive hybrid search**: ReMe combines wikilinks, BM25, and embeddings for hybrid retrieval across keyword
+  matching, semantic recall, and relationship expansion.
+- **Agent-friendly integration**: SKILL.md + CLI integration makes it easy for different agents to read, write,
+  maintain, and reuse memory.
 
-ReMe gives agents **real memory** — old conversations are automatically compacted, important information is persistently
-stored, and relevant context is automatically recalled in future interactions.
+<p align="center">
+  <img src="docs/figure/design-philosophy.svg" alt="ReMe Design Philosophy" width="92%">
+</p>
 
-ReMe achieves state-of-the-art results on the LoCoMo and HaluMem benchmarks; see the [Experimental results](#experimental-results).
+## 🔭 Use Cases
 
-<details>
-<summary><b>What you can do with ReMe</b></summary>
+- **Personal assistants**: Give personal assistants such as
+  [QwenPaw](https://github.com/agentscope-ai/QwenPaw), [OpenClaw](https://github.com/openclaw/openclaw), and
+  [Hermes](https://github.com/nousresearch/hermes-agent) a user-editable long-term memory layer.
+- **Coding agents**: Preserve coding style, project background, repository decisions, and workflow
+  experience across sessions when integrating with coding agents such as [Claude Code](plugins/reme).
+- **LLM Wiki**: Turn conversations, notes, and resources into a searchable, traceable, and linked Markdown
+  knowledge base that both users and agents can maintain.
+- **Self-evolving agents**: Support agents that learn from experience by saving successful paths, failed attempts,
+  reusable procedures, and periodic reflections as memory.
 
-<br>
+## 📰 News
 
-- **Personal assistant**: Provide long-term memory for agents like [CoPaw](https://github.com/agentscope-ai/CoPaw),
-  remembering user preferences and conversation history.
-- **Coding assistant**: Record code style preferences and project context, maintaining a consistent development
-  experience across sessions.
-- **Customer service bot**: Track user issue history and preference settings for personalized service.
-- **Task automation**: Learn success/failure patterns from historical tasks to continuously optimize execution
-  strategies.
-- **Knowledge Q&A**: Build a searchable knowledge base with semantic search and exact matching support.
-- **Multi-turn dialogue**: Automatically compress long conversations while retaining key information within limited
-  context windows.
+- [2026.07] - Our paper [Remember Me, Refine Me: A Dynamic Procedural Memory Framework for Experience-Driven Agent Evolution](https://aclanthology.org/2026.findings-acl.829/) has been accepted to Findings of ACL 2026.
 
-</details>
+## 🚀 Quick Start
 
----
+### Installation
 
-## 📁 File-based memory system (ReMeLight)
+ReMe requires Python 3.11+.
 
-> Memory as files, files as memory.
+Install from pip:
 
-Treat **memory as files** — readable, editable, and copyable.
-[CoPaw](https://github.com/agentscope-ai/CoPaw) integrates long-term memory and context management by inheriting from
-`ReMeLight`.
-
-| Traditional memory system | File-based ReMe      |
-|---------------------------|----------------------|
-| 🗄️ Database storage      | 📝 Markdown files    |
-| 🔒 Opaque                 | 👀 Always readable   |
-| ❌ Hard to modify          | ✏️ Directly editable |
-| 🚫 Hard to migrate        | 📦 Copy to migrate   |
-
-```
-working_dir/
-├── MEMORY.md              # Long-term memory: persistent info such as user preferences
-├── memory/
-│   └── YYYY-MM-DD.md      # Daily journal: automatically written after each conversation
-├── dialog/                # Raw conversation records: full dialog before compression
-│   └── YYYY-MM-DD.jsonl   # Daily conversation messages in JSONL format
-└── tool_result/           # Cache for long tool outputs (auto-managed, expired entries auto-cleaned)
-    └── <uuid>.txt
+```bash
+pip install "reme-ai[core]"
 ```
 
-### Core capabilities
-
-[ReMeLight](reme/reme_light.py) is the core class of the file-based memory system. It provides full memory management
-capabilities for AI agents:
-
-<table>
-<tr><th>Category</th><th>Method</th><th>Function</th><th>Key components</th></tr>
-<tr><td rowspan="4">Context Management</td><td><code>check_context</code></td><td>📊 Check context size</td><td><a href="reme/memory/file_based/components/context_checker.py">ContextChecker</a> — checks whether context exceeds thresholds and splits messages</td></tr>
-<tr><td><code>compact_memory</code></td><td>📦 Compact history into summary</td><td><a href="reme/memory/file_based/components/compactor.py">Compactor</a> — ReActAgent that generates structured context summaries</td></tr>
-<tr><td><code>compact_tool_result</code></td><td>✂️ Compact long tool outputs</td><td><a href="reme/memory/file_based/components/tool_result_compactor.py">ToolResultCompactor</a> — truncates long tool outputs and stores them in <code>tool_result/</code> while keeping file references in messages</td></tr>
-<tr><td><code>pre_reasoning_hook</code></td><td>🔄 Pre-reasoning hook</td><td><code>compact_tool_result</code> + <code>check_context</code> + <code>compact_memory</code> + <code>summary_memory</code> (async)</td></tr>
-<tr><td rowspan="2">Long-term Memory</td><td><code>summary_memory</code></td><td>📝 Persist important memory to files</td><td><a href="reme/memory/file_based/components/summarizer.py">Summarizer</a> — ReActAgent + file tools (<code>read</code> / <code>write</code> / <code>edit</code>)</td></tr>
-<tr><td><code>memory_search</code></td><td>🔍 Semantic memory search</td><td><a href="reme/memory/file_based/tools/memory_search.py">MemorySearch</a> — hybrid retrieval with vectors + BM25</td></tr>
-<tr><td rowspan="2">Session Memory</td><td><code>get_in_memory_memory</code></td><td>💾 Create in-session memory instance</td><td>Returns ReMeInMemoryMemory with dialog_path configured for persistence</td></tr>
-<tr><td><code>await_summary_tasks</code></td><td>⏳ Wait for async summary tasks</td><td>Block until all background summary tasks complete</td></tr>
-<tr><td>-</td><td><code>start</code></td><td>🚀 Start memory system</td><td>Initialize file storage, file watcher, and embedding cache; clean up expired tool result files</td></tr>
-<tr><td>-</td><td><code>close</code></td><td>📕 Shutdown and cleanup</td><td>Clean up tool result files, stop file watcher, and persist embedding cache</td></tr>
-</table>
-
----
-
-### 🚀 Quick start
-
-#### Installation
-
-**Install from source:**
+Install from source:
 
 ```bash
 git clone https://github.com/agentscope-ai/ReMe.git
 cd ReMe
-pip install -e ".[light]"
+pip install -e ".[core]"
 ```
 
-**Update to the latest version:**
+### Environment Variables
+
+Configure environment variables when you want LLM-powered memory evolution or embedding retrieval:
 
 ```bash
-git pull
-pip install -e ".[light]"
+cat > .env <<'EOF'
+# Optional: enables semantic retrieval when the embedding store is configured.
+EMBEDDING_API_KEY=sk-xxx
+EMBEDDING_BASE_URL=https://dashscope.aliyuncs.com/compatible-mode/v1
+
+# Required for auto_memory, auto_resource, and auto_dream.
+LLM_API_KEY=sk-xxx
+LLM_BASE_URL=https://dashscope.aliyuncs.com/compatible-mode/v1
+EOF
 ```
 
-#### Environment variables
+Basic file operations, BM25 search, wikilink traversal, and reading proactive topics can run without LLM credentials.
 
-`ReMeLight` uses environment variables to configure the embedding model and storage backends:
+### Start the Service
 
-| Variable             | Description                   | Example                                             |
-|----------------------|-------------------------------|-----------------------------------------------------|
-| `LLM_API_KEY`        | LLM API key                   | `sk-xxx`                                            |
-| `LLM_BASE_URL`       | LLM base URL                  | `https://dashscope.aliyuncs.com/compatible-mode/v1` |
-| `EMBEDDING_API_KEY`  | Embedding API key (optional)  | `sk-xxx`                                            |
-| `EMBEDDING_BASE_URL` | Embedding base URL (optional) | `https://dashscope.aliyuncs.com/compatible-mode/v1` |
-
-#### Python usage
-
-```python
-import asyncio
-
-from reme.reme_light import ReMeLight
-
-
-async def main():
-    # Initialize ReMeLight
-    reme = ReMeLight(
-        default_as_llm_config={"model_name": "qwen3.5-35b-a3b"},
-        # default_embedding_model_config={"model_name": "text-embedding-v4"},
-        default_file_store_config={"fts_enabled": True, "vector_enabled": False},
-        enable_load_env=True,
-    )
-    await reme.start()
-
-    messages = [...]  # List of conversation messages
-
-    # 1. Check context size (token counting, determine if compaction is needed)
-    messages_to_compact, messages_to_keep, is_valid = await reme.check_context(
-        messages=messages,
-        memory_compact_threshold=90000,  # Threshold to trigger compaction (tokens)
-        memory_compact_reserve=10000,  # Token count to reserve for recent messages
-    )
-
-    # 2. Compact conversation history into a structured summary
-    summary = await reme.compact_memory(
-        messages=messages,
-        previous_summary="",
-        max_input_length=128000,  # Model context window (tokens)
-        compact_ratio=0.7,  # Trigger compaction when exceeding max_input_length * 0.7
-        language="zh",  # Summary language (e.g., "zh" / "")
-    )
-
-    # 3. Compact long tool outputs (prevent tool results from blowing up context)
-    messages = await reme.compact_tool_result(messages)
-
-    # 4. Pre-reasoning hook (auto compact tool results + check context + generate summaries)
-    processed_messages, compressed_summary = await reme.pre_reasoning_hook(
-        messages=messages,
-        system_prompt="You are a helpful AI assistant.",
-        compressed_summary="",
-        max_input_length=128000,
-        compact_ratio=0.7,
-        memory_compact_reserve=10000,
-        enable_tool_result_compact=True,
-        tool_result_compact_keep_n=3,
-    )
-
-    # 5. Persist important memory to files (writes to memory/YYYY-MM-DD.md)
-    summary_result = await reme.summary_memory(
-        messages=messages,
-        language="zh",
-    )
-
-    # 6. Semantic memory search (vector + BM25 hybrid retrieval)
-    result = await reme.memory_search(query="Python version preference", max_results=5)
-
-    # 7. Create in-session memory instance (manages context for one conversation)
-    memory = reme.get_in_memory_memory()  # Auto-configures dialog_path
-    for msg in messages:
-        await memory.add(msg)
-    token_stats = await memory.estimate_tokens(max_input_length=128000)
-    print(f"Current context usage: {token_stats['context_usage_ratio']:.1f}%")
-    print(f"Message token count: {token_stats['messages_tokens']}")
-    print(f"Estimated total tokens: {token_stats['estimated_tokens']}")
-
-    # 8. Mark messages as compressed (auto-persists to dialog/YYYY-MM-DD.jsonl)
-    # await memory.mark_messages_compressed(messages_to_compact)
-
-    # Shutdown ReMeLight
-    await reme.close()
-
-
-if __name__ == "__main__":
-    asyncio.run(main())
+```bash
+reme start
 ```
 
-> 📂 Full example: [test_reme_light.py](tests/light/test_reme_light.py)
-> 📋 Sample run log: [test_reme_light_log.txt](tests/light/test_reme_light_log.txt) (223,838 tokens → 1,105 tokens, 99.5%
-> compression)
+The default service address is `127.0.0.1:2333`. If the port is occupied, specify another port:
 
-### Architecture of the file-based ReMeLight memory system
-
-[CoPaw MemoryManager](https://github.com/agentscope-ai/CoPaw/blob/main/src/copaw/agents/memory/memory_manager.py)
-inherits
-`ReMeLight` and integrates its memory capabilities into the agent reasoning loop:
-
-```mermaid
-graph LR
-    Agent[Agent] -->|Before each reasoning step| Hook[pre_reasoning_hook]
-    Hook --> TC[compact_tool_result<br>Compact tool outputs]
-    TC --> CC[check_context<br>Token counting]
-    CC -->|Exceeds limit| CM[compact_memory<br>Generate summary]
-    CC -->|Exceeds limit| SM[summary_memory<br>Async persistence]
-    SM -->|ReAct + FileIO| Files[memory/*.md]
-    CC -->|Exceeds limit| MMC[mark_messages_compressed<br>Persist raw dialog]
-    MMC --> Dialog[dialog/*.jsonl]
-    Agent -->|Explicit call| Search[memory_search<br>Vector+BM25]
-    Agent -->|In - session| InMem[ReMeInMemoryMemory<br>Token-aware memory]
-    InMem -->|Compress/Clear| Dialog
-    Files -.->|FileWatcher| Store[(FileStore<br>Vector+FTS index)]
-    Search --> Store
+```bash
+reme start service.port=8181
+# reme start workspace_dir=/tmp/reme-demo service.port=8181
 ```
 
+After startup, check the service status. If you use a custom port, replace `2333` in the URL below with that port.
+
+```bash
+reme version
+curl -s http://127.0.0.1:2333/version -H 'Content-Type: application/json' -d '{}'
+```
+
+### 5-Minute Memory Demo
+
+With the service running, write a memory node, let ReMe index it, then retrieve it:
+
+```bash
+reme write \
+  path=digest/wiki/quick-start-demo \
+  name="Quick Start Demo" \
+  description="A first ReMe memory node" \
+  content="# Quick Start Demo
+
+ReMe stores agent memory as readable Markdown.
+
+Related: [[digest/wiki/memory-as-file.md]]"
+
+reme search query="agent memory markdown" limit=5
+reme read path=digest/wiki/quick-start-demo start_line=1 end_line=20
+```
+
+The generated file is ordinary Markdown with frontmatter:
+
+```markdown
+---
+name: Quick Start Demo
+description: A first ReMe memory node
 ---
 
-#### 1. `check_context` — context checking
+# Quick Start Demo
 
-[ContextChecker](reme/memory/file_based/components/context_checker.py) uses token counting to determine whether the
-context exceeds thresholds and automatically splits messages into a "to compact" group and a "to keep" group.
+ReMe stores agent memory as readable Markdown.
 
-```mermaid
-graph LR
-    M[messages] --> H[AsMsgHandler<br>Token counting]
-    H --> C{total > threshold?}
-    C -->|No| K[Return all messages]
-    C -->|Yes| S[Keep from tail<br>reserve tokens]
-    S --> CP[messages_to_compact<br>Earlier messages]
-    S --> KP[messages_to_keep<br>Recent messages]
-    S --> V{is_valid<br>Tool calls aligned?}
+Related: [[digest/wiki/memory-as-file.md]]
 ```
 
-- **Core logic**: keep `reserve` tokens from the tail; mark the rest as messages to compact.
-- **Integrity guarantee**: preserves complete user-assistant turns and tool_use/tool_result pairs without splitting
-  them.
+## 📁 Memory System
 
----
+> Memory as File, File as Memory.
 
-#### 2. `compact_memory` — conversation compaction
+ReMe treats **memory as files**, progressively processing raw conversations and external resources from `session/` and
+`resource/` into `daily/`, then consolidating them into reusable long-term memory nodes under `digest/`.
 
-[Compactor](reme/memory/file_based/components/compactor.py) uses a ReActAgent to compact conversation history into a *
-*structured context summary**.
+### Directory Structure
 
-```mermaid
-graph LR
-    M[messages] --> H[AsMsgHandler<br>format_msgs_to_str]
-    H --> A[ReActAgent<br>reme_compactor]
-    P[previous_summary] -->|Incremental update| A
-    A --> S[Structured summary<br>Goal/Progress/Decisions...]
+```text
+<workspace_dir>/
+├── metadata/       # Persistent system state such as indexes, graphs, and catalogs
+├── session/        # Raw conversations and agent sessions
+│   ├── dialog/
+│   │   └── <session_id>.jsonl
+│   ├── agentscope/
+│   └── claude_code/
+├── resource/            # External raw materials
+│   └── YYYY-MM-DD/
+│       └── <resource>.<ext>
+├── daily/               # Lightly processed memory: daily facts, conversation summaries, resource readings
+│   ├── YYYY-MM-DD.md
+│   └── YYYY-MM-DD/
+│       ├── <session_event>.md
+│       ├── <resource_stem>.md
+│       └── interests.yaml
+└── digest/              # Long-term memory: personal facts, procedural experience, knowledge nodes
+    ├── personal/
+    │   └── {topic/event}.md
+    ├── procedure/
+    │   └── {topic/event}.md
+    └── wiki/
+        └── {topic/event}.md
 ```
 
-**Summary structure** (context checkpoints):
-
-| Field                 | Description                                                            |
-|-----------------------|------------------------------------------------------------------------|
-| `## Goal`             | User goals                                                             |
-| `## Constraints`      | Constraints and preferences                                            |
-| `## Progress`         | Task progress                                                          |
-| `## Key Decisions`    | Key decisions                                                          |
-| `## Next Steps`       | Next step plans                                                        |
-| `## Critical Context` | Critical data such as file paths, function names, error messages, etc. |
-
-- **Incremental updates**: when `previous_summary` is provided, new conversations are merged into the existing summary.
-
----
-
-#### 3. `summary_memory` — persistent memory
-
-[Summarizer](reme/memory/file_based/components/summarizer.py) uses a **ReAct + file tools** pattern so that the AI can
-decide what to write and where to write it.
-
-```mermaid
-graph LR
-    M[messages] --> A[ReActAgent<br>reme_summarizer]
-    A -->|read| R[Read memory/YYYY-MM-DD.md]
-    R --> T{Reason: how to merge?}
-    T -->|write| W[Overwrite]
-    T -->|edit| E[Edit in place]
-    W --> F[memory/YYYY-MM-DD.md]
-    E --> F
-```
-
-**File tools** ([FileIO](reme/memory/file_based/tools/file_io.py)):
-
-| Tool    | Function              |
-|---------|-----------------------|
-| `read`  | Read file content     |
-| `write` | Overwrite file        |
-| `edit`  | Find-and-replace edit |
-
----
-
-#### 4. `compact_tool_result` — tool result compaction
-
-[ToolResultCompactor](reme/memory/file_based/components/tool_result_compactor.py) addresses the problem of long tool
-outputs bloating the context.
-
-```mermaid
-graph LR
-    M[messages] --> L{Iterate tool_result<br>len > threshold?}
-    L -->|No| K[Keep as-is]
-    L -->|Yes| T[truncate_text<br>Truncate to threshold]
-    T --> S[Write full content<br>tool_result/uuid.txt]
-    S --> R[Append file path reference<br>to message]
-    R --> C[cleanup_expired_files<br>Delete expired files]
-```
-
-- **Auto cleanup**: expired files (older than `retention_days`) are deleted automatically during `start` / `close` /
-  `compact_tool_result`.
-
----
-
-#### 5. `memory_search` — memory retrieval
-
-[MemorySearch](reme/memory/file_based/tools/memory_search.py) provides **vector + BM25 hybrid retrieval**.
-
-```mermaid
-graph LR
-    Q[query] --> E[Embedding<br>Vectorization]
-    E --> V[vector_search<br>Semantic similarity]
-    Q --> B[BM25<br>Keyword matching]
-    V -->|" weight: 0.7 "| M[Deduplicate + weighted merge]
-    B -->|" weight: 0.3 "| M
-    M --> F[min_score filter]
-    F --> R[Top-N results]
-```
-
-- **Fusion mechanism**: vector weight 0.7 + BM25 weight 0.3 — balancing semantic similarity and exact matches.
-
----
-
-#### 6. `ReMeInMemoryMemory` — in-session memory
-
-[ReMeInMemoryMemory](reme/memory/file_based/reme_in_memory_memory.py) extends AgentScope's `InMemoryMemory` to provide
-token-aware memory management and raw conversation persistence.
-
-```mermaid
-graph LR
-    C[content] --> G[get_memory<br>exclude_mark=COMPRESSED]
-    G --> F[Filter out compressed messages]
-    F --> P{prepend_summary?}
-    P -->|Yes| S[Prepend previous summary]
-    S --> O[Output messages]
-    P -->|No| O
-    M[mark_messages_compressed] --> D[Persist to dialog/YYYY-MM-DD.jsonl]
-    D --> R[Remove from memory]
-```
-
-| Function                         | Description                                              |
-|----------------------------------|----------------------------------------------------------|
-| `get_memory`                     | Filter messages by mark and auto-append summary          |
-| `estimate_tokens`                | Estimate token usage of the context                      |
-| `state_dict` / `load_state_dict` | Serialize/deserialize state (session persistence)        |
-| `mark_messages_compressed`       | Mark messages compressed and persist to dialog directory |
-| `clear_content`                  | Persist all messages before clearing memory              |
-
-**Raw conversation persistence**: When messages are compressed or cleared, they are automatically saved to
-`{dialog_path}/{date}.jsonl` with one JSON-formatted message per line.
-
----
-
-#### 7. `pre_reasoning_hook` — pre-reasoning processing
-
-This is a unified entry point that wires all the above components together and automatically manages context before each
-reasoning step.
-
-```mermaid
-graph LR
-    M[messages] --> TC[compact_tool_result<br>Compact long tool outputs]
-    TC --> CC[check_context<br>Compute remaining space]
-    CC --> D{messages_to_compact<br>Non-empty?}
-    D -->|No| K[Return original messages + summary]
-    D -->|Yes| V{is_valid?}
-    V -->|No| K
-    V -->|Yes| CM[compact_memory<br>Sync summary generation]
-    V -->|Yes| SM[add_async_summary_task<br>Async persistence]
-    CM --> R[Return messages_to_keep + new summary]
-```
-
-**Execution flow**:
-
-1. `compact_tool_result` — compact long tool outputs.
-2. `check_context` — check whether the context exceeds limits.
-3. `compact_memory` — generate compact summary (sync).
-4. `summary_memory` — persist memory (async in the background).
-
----
-
-## 🗃️ Vector-based memory system
-
-[ReMe Vector Based](reme/reme.py) is the core class for the vector-based memory system. It manages three types of
-memories:
-
-| Memory type           | Use case                                                          |
-|-----------------------|-------------------------------------------------------------------|
-| **Personal memory**   | Records user preferences and habits                               |
-| **Procedural memory** | Records task execution experience and patterns of success/failure |
-| **Tool memory**       | Records tool usage experience and parameter tuning                |
-
-### Core capabilities
-
-| Method             | Function     | Description                                                 |
-|--------------------|--------------|-------------------------------------------------------------|
-| `summarize_memory` | 🧠 Summarize | Automatically extract and store memories from conversations |
-| `retrieve_memory`  | 🔍 Retrieve  | Retrieve related memories based on a query                  |
-| `add_memory`       | ➕ Add        | Manually add memories into the vector store                 |
-| `get_memory`       | 📖 Get       | Get a single memory by ID                                   |
-| `update_memory`    | ✏️ Update    | Update existing memory content or metadata                  |
-| `delete_memory`    | 🗑️ Delete   | Delete a specific memory                                    |
-| `list_memory`      | 📋 List      | List memories with filtering and sorting                    |
-
-### Installation and environment variables
-
-Installation and environment configuration are the same as [ReMeLight](#installation).
-API keys are configured via environment variables and can be stored in a `.env` file at the project root.
-
-### Python usage
-
-```python
-import asyncio
-
-from reme import ReMe
-
-
-async def main():
-    # Initialize ReMe
-    reme = ReMe(
-        working_dir=".reme",
-        default_llm_config={
-            "backend": "openai",
-            "model_name": "qwen3.5-plus",
-        },
-        default_embedding_model_config={
-            "backend": "openai",
-            "model_name": "text-embedding-v4",
-            "dimensions": 1024,
-        },
-        default_vector_store_config={
-            "backend": "local",  # Supports local/chroma/qdrant/elasticsearch
-        },
-    )
-    await reme.start()
-
-    messages = [
-        {"role": "user", "content": "Help me write a Python script", "time_created": "2026-02-28 10:00:00"},
-        {"role": "assistant", "content": "Sure, I'll help you with that.", "time_created": "2026-02-28 10:00:05"},
-    ]
-
-    # 1. Summarize memories from conversation (automatically extract user preferences, task experience, etc.)
-    result = await reme.summarize_memory(
-        messages=messages,
-        user_name="alice",  # Personal memory
-        # task_name="code_writing",  # Procedural memory
-    )
-    print(f"Summary result: {result}")
-
-    # 2. Retrieve related memories
-    memories = await reme.retrieve_memory(
-        query="Python programming",
-        user_name="alice",
-        # task_name="code_writing",
-    )
-    print(f"Retrieved memories: {memories}")
-
-    # 3. Manually add a memory
-    memory_node = await reme.add_memory(
-        memory_content="The user prefers concise code style.",
-        user_name="alice",
-    )
-    print(f"Added memory: {memory_node}")
-    memory_id = memory_node.memory_id
-
-    # 4. Get a single memory by ID
-    fetched_memory = await reme.get_memory(memory_id=memory_id)
-    print(f"Fetched memory: {fetched_memory}")
-
-    # 5. Update memory content
-    updated_memory = await reme.update_memory(
-        memory_id=memory_id,
-        user_name="alice",
-        memory_content="The user prefers concise code with comments.",
-    )
-    print(f"Updated memory: {updated_memory}")
-
-    # 6. List all memories for the user (supports filtering and sorting)
-    all_memories = await reme.list_memory(
-        user_name="alice",
-        limit=10,
-        sort_key="time_created",
-        reverse=True,
-    )
-    print(f"User memory list: {all_memories}")
-
-    # 7. Delete a specific memory
-    await reme.delete_memory(memory_id=memory_id)
-    print(f"Deleted memory: {memory_id}")
-
-    # 8. Delete all memories (use with care)
-    # await reme.delete_all()
-
-    await reme.close()
-
-
-if __name__ == "__main__":
-    asyncio.run(main())
-```
-
-### Technical architecture
-
-```mermaid
-graph LR
-    User[User / Agent] --> ReMe[Vector Based ReMe]
-    ReMe --> Summarize[Summarize memories]
-    ReMe --> Retrieve[Retrieve memories]
-    ReMe --> CRUD[CRUD operations]
-    Summarize --> PersonalSum[PersonalSummarizer]
-    Summarize --> ProceduralSum[ProceduralSummarizer]
-    Summarize --> ToolSum[ToolSummarizer]
-    Retrieve --> PersonalRet[PersonalRetriever]
-    Retrieve --> ProceduralRet[ProceduralRetriever]
-    Retrieve --> ToolRet[ToolRetriever]
-    PersonalSum --> VectorStore[Vector database]
-    ProceduralSum --> VectorStore
-    ToolSum --> VectorStore
-    PersonalRet --> VectorStore
-    ProceduralRet --> VectorStore
-    ToolRet --> VectorStore
-```
-
-### Experimental results
-
-Evaluations are conducted on two benchmarks: **LoCoMo** and **HaluMem**. Experimental settings:
-
-1. **ReMe backbone**: as specified in each table.
-2. **Evaluation protocol**: LLM-as-a-Judge following MemOS — each answer is scored by GPT-4o-mini.
-
-Baseline results are reproduced from their respective papers under aligned settings where possible.
-
-### LoCoMo
-
-| Method   | Single Hop | Multi Hop | Temporal  | Open Domain | Overall   |
-|----------|------------|-----------|-----------|-------------|-----------|
-| MemoryOS | 62.43      | 56.50     | 37.18     | 40.28       | 54.70     |
-| Mem0     | 66.71      | 58.16     | 55.45     | 40.62       | 61.00     |
-| MemU     | 72.77      | 62.41     | 33.96     | 46.88       | 61.15     |
-| MemOS    | 81.45      | 69.15     | 72.27     | 60.42       | 75.87     |
-| HiMem    | 89.22      | 70.92     | 74.77     | 54.86       | 80.71     |
-| Zep      | 88.11      | 71.99     | 74.45     | 66.67       | 81.06     |
-| TiMem    | 81.43      | 62.20     | 77.63     | 52.08       | 75.30     |
-| TSM      | 84.30      | 66.67     | 71.03     | 58.33       | 76.69     |
-| MemR3    | 89.44      | 71.39     | 76.22     | 61.11       | 81.55     |
-| **ReMe** | **89.89**  | **82.98** | **83.80** | **71.88**   | **86.23** |
-
-### HaluMem
-
-| Method      | Memory Integrity | Memory Accuracy | QA Accuracy |
-|-------------|------------------|-----------------|-------------|
-| MemoBase    | 14.55            | 92.24           | 35.53       |
-| Supermemory | 41.53            | 90.32           | 54.07       |
-| Mem0        | 42.91            | 86.26           | 53.02       |
-| ProMem      | **73.80**        | 89.47           | 62.26       |
-| **ReMe**    | 67.72            | **94.06**       | **88.78**   |
-
----
-
-## 🧪 Procedural memory paper
-
-> Our procedural (task) memory paper is available on [arXiv](https://arxiv.org/abs/2512.10696).
-
-### 🌍 [Appworld benchmark](benchmark/appworld/quickstart.md)
-
-We evaluate ReMe on the Appworld environment using Qwen3-8B (non-thinking mode):
-
-| Method   | Avg@4               | Pass@4              |
-|----------|---------------------|---------------------|
-| w/o ReMe | 0.1497              | 0.3285              |
-| w/ ReMe  | 0.1706 **(+2.09%)** | 0.3631 **(+3.46%)** |
-
-Pass@K measures the probability that at least one of K generated candidates successfully completes the task (score=1).
-The current experiments use an internal AppWorld environment, which may differ slightly from the public version.
-
-For more details on how to reproduce the experiments, see [quickstart.md](benchmark/appworld/quickstart.md).
-
-### 🔧 [BFCL-V3 benchmark](benchmark/bfcl/quickstart.md)
-
-We evaluate ReMe on the BFCL-V3 multi-turn-base task (random split 50 train / 150 val) using Qwen3-8B (thinking mode):
-
-| Method   | Avg@4               | Pass@4              |
-|----------|---------------------|---------------------|
-| w/o ReMe | 0.4033              | 0.5955              |
-| w/ ReMe  | 0.4450 **(+4.17%)** | 0.6577 **(+6.22%)** |
-
-For more details on how to reproduce the experiments, see [quickstart.md](benchmark/bfcl/quickstart.md).
-
-## ⭐ Community & support
-
-- **Star & Watch**: Starring helps more agent developers discover ReMe; Watching keeps you up to date with new releases
-  and features.
-- **Share your results**: Share how ReMe empowers your agents in Issues or Discussions — we are happy to showcase great
-  community use cases.
-- **Need a new feature?** Open a feature request; we’ll evolve ReMe together with the community.
-- **Code contributions**: All forms of contributions are welcome. Please see
-  the [contribution guide](docs/contribution.md).
-- **Acknowledgements**: We thank excellent open-source projects such as OpenClaw, Mem0, MemU, and CoPaw for their
-  inspiration and support.
+<p align="center">
+  <img src="docs/figure/reme-overview.svg" alt="ReMe file-based memory system overview" width="92%">
+</p>
+
+## 🧭 Memory Design Philosophy
+
+> Capture raw dialogs and resources, refine them into long-term preferences, reusable experience, and valuable knowledge,
+> while keeping the result editable by humans and agents.
+
+### Automatic Memory Flow
+
+ReMe follows a capture → index → consolidate → recall loop. Conversations and resources first become daily memory cards;
+background jobs keep files searchable; `auto_dream` distills stable knowledge into `digest/`; agents recall memory
+through search, wikilinks, or proactive topics.
+
+| Capability                                  | Entry point                                      | What it does                                                                                  | Output                                                   |
+|---------------------------------------------|--------------------------------------------------|-----------------------------------------------------------------------------------------------|----------------------------------------------------------|
+| [`auto_memory`](docs/en/auto_memory.md)     | Agent hook or `reme auto_memory`                 | Distills useful conversation facts while preserving the raw session.                          | `session/dialog/*.jsonl`, `daily/<date>/<session>.md`    |
+| [`auto_resource`](docs/en/auto_resource.md) | Resource watcher or `reme auto_resource`         | Turns files under `resource/<date>/` into source-linked daily cards.                          | `daily/<date>/<resource-card>.md`                        |
+| [`auto_index`](docs/en/memory_search.md)    | Background watcher or `reme reindex`             | Maintains chunks, BM25/embedding indexes, and the wikilink graph.                             | Searchable `daily/`, `digest/`, and `resource/` content  |
+| [`auto_dream`](docs/en/auto_dream.md)       | `dream_cron` or `reme auto_dream`                | Consolidates changed daily cards into long-term personal, procedure, and wiki memory.         | `digest/**`, `daily/<date>/interests.yaml`               |
+| [`proactive`](docs/en/proactive.md)         | `reme proactive` before an agent decides to act  | Reads topics generated by `auto_dream`; the host agent decides whether and how to mention them. | Structured topics from `daily/<date>/interests.yaml`     |
+
+<table>
+  <tr>
+    <td align="center" width="50%">
+      <img src="docs/figure/memory-as-file.svg" alt="Memory as File" width="92%">
+    </td>
+    <td align="center" width="50%">
+      <img src="docs/figure/auto-memory-resource.svg" alt="Auto Memory and Resource" width="92%">
+    </td>
+  </tr>
+  <tr>
+    <td align="center" width="50%">
+      <img src="docs/figure/auto-dream-and-proactive.svg" alt="Auto Dream and Proactive" width="92%">
+    </td>
+    <td align="center" width="50%">
+      <img src="docs/figure/auto-index-and-memory-search.svg" alt="Auto Index and Memory Search" width="92%">
+    </td>
+  </tr>
+</table>
+
+## 🤝 Agent-friendly Integration
+
+ReMe runs as a local memory service and offers multiple integration paths: CLI, HTTP API, MCP server, and SDK. Different
+agents can choose the path that fits their runtime while sharing the same local memory workspace.
+
+| Agents                                               | Recommended path                                                            | What works out of the box                                                                      |
+|------------------------------------------------------|-----------------------------------------------------------------------------|------------------------------------------------------------------------------------------------|
+| **QwenPaw**                                          | Embed ReMe via the Python SDK.                                              | Reuse the app's own lifecycle and model config while keeping memory local and file-based.      |
+| **Claude Code**                                      | Start ReMe as an MCP service and install [plugins/reme](plugins/reme).      | MCP recall tools, a `reme-memory` skill, and a Stop hook that records sessions automatically.  |
+| **Other CLI-capable agents (OpenClaw/Hermes/Codex)** | Copy or install [skills/reme_memory/SKILL.md](skills/reme_memory/SKILL.md). | Search/read/write memory and call `auto_memory`, `auto_dream`, and `proactive` via the CLI.    |
+
+<p align="center"><b>Integration demos</b></p>
+
+<table>
+  <tr>
+    <td align="center"></td>
+    <td width="45%" align="center"><b>Auto Memory</b></td>
+    <td width="45%" align="center"><b>Auto Dream</b></td>
+  </tr>
+  <tr>
+    <td align="center"><b>QwenPaw</b></td>
+    <td width="45%">
+      <img src="docs/figure/qwenpaw-auto-memory.gif" alt="QwenPaw Auto Memory demo" width="100%">
+    </td>
+    <td width="45%">
+      <img src="docs/figure/qwenpaw-auto-dream.gif" alt="QwenPaw Auto Dream demo" width="100%">
+    </td>
+  </tr>
+  <tr>
+    <td align="center"><b>Claude Code</b></td>
+    <td width="45%">
+      <img src="docs/figure/cc-auto-memory.gif" alt="Claude Code Auto Memory demo" width="100%">
+    </td>
+    <td width="45%">
+      <img src="docs/figure/cc-auto-dream.gif" alt="Claude Code Auto Dream demo" width="100%">
+    </td>
+  </tr>
+</table>
+
+## 🛠️ ReMe Operations
+
+ReMe operates the workspace through a unified job interface exposed by the CLI. Agents usually only need retrieval,
+reading, writing, editing, and automatic memory commands. Lower-level indexing, frontmatter, and file operation commands
+are mainly for maintenance, debugging, or advanced integration. Run `reme help` for the full job list.
+
+| Command                                   | Purpose                                                                              |
+|-------------------------------------------|--------------------------------------------------------------------------------------|
+| `reme start`                              | Start the local ReMe service.                                                        |
+| `reme version` / `reme health_check`      | Check package and component status.                                                  |
+| [`reme search`](docs/en/memory_search.md) | Retrieve memory with hybrid search.                                                  |
+| `reme read` / `reme write` / `reme edit`  | Inspect and maintain Markdown memory files.                                          |
+| `reme auto_memory`                        | Turn conversation messages into daily memory cards. Requires LLM credentials.        |
+| `reme auto_resource`                      | Interpret files under `resource/` into daily resource cards. Requires LLM credentials. |
+| `reme auto_dream` / `reme proactive`      | Consolidate daily memory into long-term digest and surface topics worth attention.   |
+| `reme reindex`                            | Rebuild search and wikilink indexes from existing files.                             |
+
+## 🤝 Community and Support
+
+- **Issues and requests**: Check [Open Issues](https://github.com/agentscope-ai/ReMe/issues) first. If there is no
+  related discussion, open a new issue with background, expected behavior, and impact scope.
+- **Code contributions**: Before making changes, read the [contribution guide](docs/en/contributing.md)
+  and [code framework](docs/en/framework.md), and follow the CLI / Service / Application / Job / Step / Component
+  layering.
+- **Documentation contributions**: For user-visible installation, configuration, invocation, or behavior changes, update
+  `docs/en/`, `docs/zh/`, or the README files accordingly.
+- **Commit convention**: Conventional Commits are recommended, for example `feat(search): add link expansion option` or
+  `docs(zh): update quick start`.
+- **Pre-submit checks**: Before submitting a PR, try to run `pre-commit run --all-files` and `pytest`. If tests that
+  depend on LLMs, embeddings, or external services cannot run, explain that in the PR.
+- **Get help**: Use [GitHub Issues](https://github.com/agentscope-ai/ReMe/issues) for bugs and feature requests. Project
+  documentation is available at [https://reme.agentscope.io/](https://reme.agentscope.io/).
 
 ### Contributors
 
-Thanks to all who have contributed to ReMe:
+Thanks to everyone who has contributed to ReMe:
 
 <a href="https://github.com/agentscope-ai/ReMe/graphs/contributors">
   <img src="https://contrib.rocks/image?repo=agentscope-ai/ReMe" alt="Contributors" />
 </a>
 
----
-
 ## 📄 Citation
 
 ```bibtex
-@software{AgentscopeReMe2025,
-  title = {AgentscopeReMe: Memory Management Kit for Agents},
+@software{ReMe2026,
+  title = {Remember me, Refine me: Memory Management Kit for Agents},
   author = {ReMe Team},
   url = {https://reme.agentscope.io},
-  year = {2025}
+  year = {2026}
 }
 ```
 
----
-
 ## ⚖️ License
 
-This project is open-sourced under the Apache License 2.0. See [LICENSE](./LICENSE) for details.
+This project is open source under the Apache License 2.0. See [LICENSE](./LICENSE) for details.
 
----
-
-## 🤔 Why ReMe?
-
-ReMe stands for **Remember Me** and **Refine Me**, symbolizing our goal to help AI agents "remember" users and "refine"
-themselves through interactions. We hope ReMe is not just a cold memory module, but a partner that truly helps agents
-understand users, accumulate experience, and continuously evolve.
-
----
-
-## 📈 Star history
+## 📈 Star History
 
 [![Star History Chart](https://api.star-history.com/svg?repos=agentscope-ai/ReMe&type=Date)](https://www.star-history.com/#agentscope-ai/ReMe&Date)
-

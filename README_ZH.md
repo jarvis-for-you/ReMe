@@ -1,15 +1,12 @@
 <p align="center">
- <img src="docs/_static/figure/reme_logo.png" alt="ReMe 标志" width="50%">
+ <img src="docs/figure/reme_logo.png" alt="ReMe Logo" width="50%">
 </p>
 
 <p align="center">
-  <a href="https://pypi.org/project/reme-ai/"><img src="https://img.shields.io/badge/python-3.10+-blue" alt="Python Version"></a>
+  <a href="https://pypi.org/project/reme-ai/"><img src="https://img.shields.io/badge/python-3.11+-blue" alt="Python Version"></a>
   <a href="https://pypi.org/project/reme-ai/"><img src="https://img.shields.io/pypi/v/reme-ai.svg?logo=pypi" alt="PyPI Version"></a>
   <a href="https://pepy.tech/project/reme-ai/"><img src="https://img.shields.io/pypi/dm/reme-ai" alt="PyPI Downloads"></a>
   <a href="https://github.com/agentscope-ai/ReMe"><img src="https://img.shields.io/github/commit-activity/m/agentscope-ai/ReMe?style=flat-square" alt="GitHub commit activity"></a>
-</p>
-
-<p align="center">
   <a href="./LICENSE"><img src="https://img.shields.io/badge/license-Apache--2.0-black" alt="License"></a>
   <a href="./README.md"><img src="https://img.shields.io/badge/English-Click-yellow" alt="English"></a>
   <a href="./README_ZH.md"><img src="https://img.shields.io/badge/简体中文-点击查看-orange" alt="简体中文"></a>
@@ -22,597 +19,275 @@
 </p>
 
 <p align="center">
-  <strong>面向智能体的记忆管理工具包，Remember Me, Refine Me.</strong><br>
+  <strong>一个将对话和资料转化为可读、可编辑、可检索 Markdown 记忆的 Agent 记忆层。</strong><br>
 </p>
 
-> 老版本请参阅 [0.2.x 版本文档](docs/README_0_2_x_ZH.md)
+> 历史版本：[0.3.x](https://github.com/agentscope-ai/ReMe/tree/reme_v3) ·
+> [0.2.x](https://github.com/agentscope-ai/ReMe/tree/v0.2.0.6) ·
+> [MemoryScope](https://github.com/agentscope-ai/ReMe/tree/memoryscope_branch)
 
----
+🧠 ReMe 是一个面向 **AI 智能体** 的 local-first 记忆层。它把对话和资料沉淀为文件化长期记忆，并持续完成索引、链接和整理，让后续 Agent 能够可靠召回。
 
-🧠 ReMe 是一个专为 **AI 智能体** 打造的记忆管理框架，同时提供基于[文件系统](#-基于文件的记忆系统-remelight)
-和基于[向量库](#-基于向量库的记忆系统)的记忆系统。
+## ✨ 核心创新
 
-它解决智能体记忆的两类核心问题：**上下文窗口有限**（长对话时早期信息被截断或丢失）、**会话无状态**（新对话无法继承历史，每次从零开始）。
+- **Memory as File**：以带 frontmatter 和 wikilink 的 Markdown 作为记忆节点，让用户和 Agent 都能直接读写。
+- **自进化知识库**：通过 Auto Memory、Auto Resource 和 Auto Dream，把对话与资料逐步加工为长期记忆，并自动建立 wikilink 关系。
+- **渐进式混合搜索**：融合 wikilink、BM25 和 embedding，支持从关键词匹配到语义召回、关系扩展的混合检索。
+- **Agent 友好集成**：通过 SKILL.md + CLI 接入，方便不同 Agent 读写、维护与复用记忆。
 
-ReMe 让智能体拥有**真正的记忆力**——旧对话自动浓缩，重要信息持久保存，下次对话自动想起来。
+<p align="center">
+  <img src="docs/figure/design-philosophy.svg" alt="ReMe 设计理念" width="92%">
+</p>
 
-在 LoCoMo 与 HaluMem 基准测试中，ReMe 取得了领先结果，详见[实验效果](#实验效果)。
+## 🔭 适用场景
 
-<details>
-<summary><b>你可以用 ReMe 做什么</b></summary>
+- **Personal assistants**：为 [QwenPaw](https://github.com/agentscope-ai/QwenPaw)、
+  [OpenClaw](https://github.com/openclaw/openclaw)、[Hermes](https://github.com/nousresearch/hermes-agent)
+  等个人助理提供用户可编辑的长期记忆层。
+- **Coding agents**：在接入 [Claude Code](plugins/reme) 等 coding agent 时，跨会话保留代码风格、项目背景、仓库决策和流程经验。
+- **LLM Wiki**：把对话、笔记和资料转化为可检索、可追溯、可链接的 Markdown 知识库，由用户和 Agent 共同维护。
+- **Self-evolving agents**：帮助 Agent 从经验中学习，把成功路径、失败尝试、可复用流程和阶段性反思沉淀为记忆。
 
-<br>
+## 📰 新闻
 
-- **个人助理**：为 [CoPaw](https://github.com/agentscope-ai/CoPaw) 等智能体提供长期记忆，记住用户偏好和历史对话。
-- **编程助手**：记录代码风格偏好、项目上下文，跨会话保持一致的开发体验。
-- **客服机器人**：记录用户问题历史、偏好设置，提供个性化服务。
-- **任务自动化**：从历史任务中学习成功/失败模式，持续优化执行策略。
-- **知识问答**：构建可检索的知识库，支持语义搜索和精确匹配。
-- **多轮对话**：自动压缩长对话，在有限上下文窗口内保留关键信息。
+- [2026.07] - 我们的论文 [Remember Me, Refine Me: A Dynamic Procedural Memory Framework for Experience-Driven Agent Evolution](https://aclanthology.org/2026.findings-acl.829/)
+已被 Findings of ACL 2026 接收。
 
-</details>
+## 🚀 快速开始
 
----
+### 安装
 
-## 📁 基于文件的记忆系统 (ReMeLight)
+ReMe 要求 Python 3.11+。
 
-> 记忆即文件，文件即记忆
+从 pip 安装：
 
-将**记忆视为文件**——可读、可编辑、可复制。
-[CoPaw](https://github.com/agentscope-ai/CoPaw) 通过继承 `ReMeLight` 实现了长期记忆和上下文的管理。
-
-| 传统记忆系统    | File Based ReMe |
-|-----------|-----------------|
-| 🗄️ 数据库存储 | 📝 Markdown 文件  |
-| 🔒 不可见    | 👀 随时可读         |
-| ❌ 难修改     | ✏️ 直接编辑         |
-| 🚫 难迁移    | 📦 复制即迁移        |
-
-```
-working_dir/
-├── MEMORY.md              # 长期记忆：用户偏好等持久信息
-├── memory/
-│   └── YYYY-MM-DD.md      # 每日日记：对话结束后自动写入
-├── dialog/                # 原始对话记录：压缩前的完整对话
-│   └── YYYY-MM-DD.jsonl   # 按日期存储的对话消息（JSONL 格式）
-└── tool_result/           # 超长工具输出缓存（自动管理，超期自动清理）
-    └── <uuid>.txt
+```bash
+pip install "reme-ai[core]"
 ```
 
-### 核心能力
-
-[ReMeLight](reme/reme_light.py) 是该记忆系统的核心类，为 AI Agent 提供完整的记忆管理能力：
-
-<table>
-<tr><th>类别</th><th>方法</th><th>功能</th><th>关键组件</th></tr>
-<tr><td rowspan="4">上下文管理</td><td><code>check_context</code></td><td>📊 检查上下文大小</td><td><a href="reme/memory/file_based/components/context_checker.py">ContextChecker</a> — 检查上下文是否超出阈值并拆分 Message</td></tr>
-<tr><td><code>compact_memory</code></td><td>📦 压缩历史对话为摘要</td><td><a href="reme/memory/file_based/components/compactor.py">Compactor</a> — ReActAgent 生成结构化上下文摘要</td></tr>
-<tr><td><code>compact_tool_result</code></td><td>✂️ 压缩超长工具输出</td><td><a href="reme/memory/file_based/components/tool_result_compactor.py">ToolResultCompactor</a> — 截断超长的工具调用结果并转存到 <code>tool_result/</code>，消息中保留文件引用</td></tr>
-<tr><td><code>pre_reasoning_hook</code></td><td>🔄 推理前预处理钩子</td><td>compact_tool_result + check_context + compact_memory + summary_memory(async)</td></tr>
-<tr><td rowspan="2">长期记忆</td><td><code>summary_memory</code></td><td>📝 将重要记忆写入文件</td><td><a href="reme/memory/file_based/components/summarizer.py">Summarizer</a> — ReActAgent + 文件工具（read / write / edit）</td></tr>
-<tr><td><code>memory_search</code></td><td>🔍 语义搜索记忆</td><td><a href="reme/memory/file_based/tools/memory_search.py">MemorySearch</a> — 向量 + BM25 混合检索</td></tr>
-<tr><td rowspan="2">会话内存</td><td><code>get_in_memory_memory</code></td><td>💾 创建会话内存实例</td><td>返回 ReMeInMemoryMemory，自动配置 dialog_path 实现对话持久化</td></tr>
-<tr><td><code>await_summary_tasks</code></td><td>⏳ 等待异步摘要任务</td><td>阻塞等待所有后台摘要任务完成</td></tr>
-<tr><td>-</td><td><code>start</code></td><td>🚀 启动记忆系统</td><td>初始化文件存储、文件监控、Embedding 缓存；清理过期工具结果文件</td></tr>
-<tr><td>-</td><td><code>close</code></td><td>📕 关闭并清理</td><td>清理工具结果文件、停止文件监控、保存 Embedding 缓存</td></tr>
-</table>
-
----
-
-### 🚀 快速开始
-
-#### 安装
-
-**从源码安装：**
+从源码安装：
 
 ```bash
 git clone https://github.com/agentscope-ai/ReMe.git
 cd ReMe
-pip install -e ".[light]"
+pip install -e ".[core]"
 ```
 
-**更新到最新版本：**
+### 环境变量
+
+如果需要 LLM 驱动的记忆演化或 embedding 检索，可以配置环境变量：
 
 ```bash
-git pull
-pip install -e ".[light]"
+cat > .env <<'EOF'
+# 可选：配置 embedding store 后启用语义检索。
+EMBEDDING_API_KEY=sk-xxx
+EMBEDDING_BASE_URL=https://dashscope.aliyuncs.com/compatible-mode/v1
+
+# 必须：auto_memory、auto_resource 和 auto_dream 需要 LLM。
+LLM_API_KEY=sk-xxx
+LLM_BASE_URL=https://dashscope.aliyuncs.com/compatible-mode/v1
+EOF
 ```
 
-#### 环境变量
+基础文件读写、BM25 检索、wikilink 遍历和 proactive topics 读取可以先不配置 LLM 凭证。
 
-`ReMeLight` 环境变量配置 Embedding 和存储后端
+### 启动服务
 
-| Variable             | Description             | Example                                             |
-|----------------------|-------------------------|-----------------------------------------------------|
-| `LLM_API_KEY`        | LLM API key             | `sk-xxx`                                            |
-| `LLM_BASE_URL`       | LLM base URL            | `https://dashscope.aliyuncs.com/compatible-mode/v1` |
-| `EMBEDDING_API_KEY`  | Embedding API key (可选)  | `sk-xxx`                                            |
-| `EMBEDDING_BASE_URL` | Embedding base URL (可选) | `https://dashscope.aliyuncs.com/compatible-mode/v1` |
-
-#### Python 使用
-
-```python
-import asyncio
-
-from reme.reme_light import ReMeLight
-
-
-async def main():
-    # 初始化 ReMeLight
-    reme = ReMeLight(
-        default_as_llm_config={"model_name": "qwen3.5-35b-a3b"},
-        # default_embedding_model_config={"model_name": "text-embedding-v4"},
-        default_file_store_config={"fts_enabled": True, "vector_enabled": False},
-        enable_load_env=True,
-    )
-    await reme.start()
-
-    messages = [...]  # 对话消息列表
-
-    # 1. 检查上下文大小（Token 计数，判断是否需要压缩）
-    messages_to_compact, messages_to_keep, is_valid = await reme.check_context(
-        messages=messages,
-        memory_compact_threshold=90000,  # 触发压缩的阈值（tokens）
-        memory_compact_reserve=10000,  # 保留的近期消息 token 数
-    )
-
-    # 2. 将历史对话压缩为结构化摘要（可传入上轮摘要，实现增量更新）
-    summary = await reme.compact_memory(
-        messages=messages,
-        previous_summary="",
-        max_input_length=128000,  # 模型上下文窗口（tokens）
-        compact_ratio=0.7,  # 达到 max_input_length * 0.7 时触发压缩
-        language="zh",  # 摘要语言（zh / ""）
-    )
-
-    # 3. 压缩超长工具输出（防止工具结果撑爆上下文）
-    messages = await reme.compact_tool_result(messages)
-
-    # 4. 推理前预处理钩子（自动压缩工具结果 + 检查上下文 + 生成摘要）
-    processed_messages, compressed_summary = await reme.pre_reasoning_hook(
-        messages=messages,
-        system_prompt="你是一个有帮助的 AI 助手。",
-        compressed_summary="",
-        max_input_length=128000,
-        compact_ratio=0.7,
-        memory_compact_reserve=10000,
-        enable_tool_result_compact=True,
-        tool_result_compact_keep_n=3,
-    )
-
-    # 5. 将重要记忆写入文件（摘要写入 memory/YYYY-MM-DD.md）
-    summary_result = await reme.summary_memory(
-        messages=messages,
-        language="zh",
-    )
-
-    # 6. 语义搜索记忆（向量 + BM25 混合检索）
-    result = await reme.memory_search(query="Python 版本偏好", max_results=5)
-
-    # 7. 创建会话内存实例（管理单次对话的上下文）
-    from reme.memory.file_based.reme_in_memory_memory import ReMeInMemoryMemory
-    memory = reme.get_in_memory_memory()  # 自动配置 dialog_path
-    for msg in messages:
-        await memory.add(msg)
-    token_stats = await memory.estimate_tokens(max_input_length=128000)
-    print(f"当前上下文使用率: {token_stats['context_usage_ratio']:.1f}%")
-    print(f"消息 Token 数: {token_stats['messages_tokens']}")
-    print(f"预估总 Token 数: {token_stats['estimated_tokens']}")
-
-    # 8. 标记消息为压缩状态（自动持久化到 dialog/YYYY-MM-DD.jsonl）
-    # await memory.mark_messages_compressed(messages_to_compact)
-
-    # 关闭 ReMeLight
-    await reme.close()
-
-
-if __name__ == "__main__":
-    asyncio.run(main())
+```bash
+reme start
 ```
 
-> 📂 完整示例代码：[test_reme_light.py](tests/light/test_reme_light.py)
-> 📋 运行结果示例：[test_reme_light_log.txt](tests/light/test_reme_light_log.txt)（223,838 tokens → 1,105 tokens，压缩率99.5%）
+默认服务地址是 `127.0.0.1:2333`。如果端口被占用，可以指定其他端口：
 
-### 基于文件的 ReMeLight 记忆系统架构
-
-[CoPaw MemoryManager](https://github.com/agentscope-ai/CoPaw/blob/main/src/copaw/agents/memory/memory_manager.py) 继承
-`ReMeLight`，将记忆能力集成到 Agent 推理流程中：
-
-```mermaid
-graph LR
-    Agent[Agent] -->|每轮推理前| Hook[pre_reasoning_hook]
-    Hook --> TC[compact_tool_result<br>压缩工具输出]
-    TC --> CC[check_context<br>Token 计数]
-    CC -->|超限| CM[compact_memory<br>生成摘要]
-    CC -->|超限| SM[summary_memory<br>异步持久化]
-    SM -->|ReAct + FileIO| Files[memory/*.md]
-    CC -->|超限| MMC[mark_messages_compressed<br>持久化原始对话]
-    MMC --> Dialog[dialog/*.jsonl]
-    Agent -->|主动调用| Search[memory_search<br>向量+BM25]
-    Agent -->|会话内存| InMem[ReMeInMemoryMemory<br>Token感知内存]
-    InMem -->|压缩/清空| Dialog
-    Files -.->|FileWatcher| Store[(FileStore<br>向量+FTS索引)]
-    Search --> Store
+```bash
+reme start service.port=8181
+# reme start workspace_dir=/tmp/reme-demo service.port=8181
 ```
 
+启动后可以检查服务状态；如果使用了自定义端口，请将下面 URL 中的 `2333` 替换为对应端口。
+
+```bash
+reme version
+curl -s http://127.0.0.1:2333/version -H 'Content-Type: application/json' -d '{}'
+```
+
+### 5 分钟记忆 Demo
+
+服务运行后，可以写入一个记忆节点，让 ReMe 索引并检索它：
+
+```bash
+reme write \
+  path=digest/wiki/quick-start-demo \
+  name="Quick Start Demo" \
+  description="第一个 ReMe 记忆节点" \
+  content="# Quick Start Demo
+
+ReMe 会把 Agent 记忆保存为可读的 Markdown。
+
+相关链接：[[digest/wiki/memory-as-file.md]]"
+
+reme search query="agent memory markdown" limit=5
+reme read path=digest/wiki/quick-start-demo start_line=1 end_line=20
+```
+
+生成的文件是普通 Markdown，并带有 frontmatter：
+
+```markdown
+---
+name: Quick Start Demo
+description: 第一个 ReMe 记忆节点
 ---
 
-#### 1. check_context — 上下文检查
+# Quick Start Demo
 
-[ContextChecker](reme/memory/file_based/components/context_checker.py) 基于 Token 计数判断上下文是否超限，自动拆分为「待压缩」和「保留」两组消息。
+ReMe 会把 Agent 记忆保存为可读的 Markdown。
 
-```mermaid
-graph LR
-    M[messages] --> H[AsMsgHandler<br>Token 计数]
-    H --> C{total > threshold?}
-    C -->|否| K[返回全部消息]
-    C -->|是| S[从尾部向前保留<br>reserve tokens]
-    S --> CP[messages_to_compact<br>早期消息]
-    S --> KP[messages_to_keep<br>近期消息]
-    S --> V{is_valid<br>工具调用对齐?}
+相关链接：[[digest/wiki/memory-as-file.md]]
 ```
 
-- **核心逻辑**：从尾部向前保留 `reserve` tokens，超出部分标记为待压缩
-- **完整性保证**：不拆分 user-assistant 对话对，不拆分 tool_use/tool_result 配对
+## 📁 记忆系统
 
----
+> Memory as File, File as Memory.
 
-#### 2. compact_memory — 对话压缩
+ReMe 将**记忆视为文件**，让原始对话和外部资料从 `session/`、`resource/` 渐进加工到 `daily/`，再沉淀为 `digest/`
+中可长期复用的知识节点。
 
-[Compactor](reme/memory/file_based/components/compactor.py) 使用 ReActAgent 将历史对话压缩为**结构化上下文摘要**。
+### 目录结构
 
-```mermaid
-graph LR
-    M[messages] --> H[AsMsgHandler<br>format_msgs_to_str]
-    H --> A[ReActAgent<br>reme_compactor]
-    P[previous_summary] -->|增量更新| A
-    A --> S[结构化摘要<br>Goal/Progress/Decisions...]
+```text
+<workspace_dir>/
+├── metadata/       # 系统索引、图谱、catalog 等持久状态
+├── session/        # 原始对话和 Agent session
+│   ├── dialog/
+│   │   └── <session_id>.jsonl
+│   ├── agentscope/
+│   └── claude_code/
+├── resource/            # 外部原始材料
+│   └── YYYY-MM-DD/
+│       └── <resource>.<ext>
+├── daily/               # 浅加工记忆：当天事实、对话摘要、资源解读
+│   ├── YYYY-MM-DD.md
+│   └── YYYY-MM-DD/
+│       ├── <session_event>.md
+│       ├── <resource_stem>.md
+│       └── interests.yaml
+└── digest/              # 长期记忆：个人事实、流程经验、知识节点
+    ├── personal/
+    │   └── {topic/event}.md
+    ├── procedure/
+    │   └── {topic/event}.md
+    └── wiki/
+        └── {topic/event}.md
 ```
 
-**摘要结构**（上下文检查点）：
-
-| 字段                    | 说明                 |
-|-----------------------|--------------------|
-| `## Goal`             | 用户目标               |
-| `## Constraints`      | 约束和偏好              |
-| `## Progress`         | 任务进展               |
-| `## Key Decisions`    | 关键决策               |
-| `## Next Steps`       | 下一步计划              |
-| `## Critical Context` | 文件路径、函数名、错误信息等关键数据 |
-
-- **增量更新**：传入 `previous_summary` 时，自动将新对话与旧摘要合并
-
----
-
-#### 3. summary_memory — 记忆持久化
-
-[Summarizer](reme/memory/file_based/components/summarizer.py) 采用 **ReAct + 文件工具** 模式，让 AI 自主决定写什么、写到哪。
-
-```mermaid
-graph LR
-    M[messages] --> A[ReActAgent<br>reme_summarizer]
-    A -->|read| R[读取 memory/YYYY-MM-DD.md]
-    R --> T{思考: 如何合并?}
-    T -->|write| W[覆盖写入]
-    T -->|edit| E[精确替换]
-    W --> F[memory/YYYY-MM-DD.md]
-    E --> F
-```
-
-**文件工具**（[FileIO](reme/memory/file_based/tools/file_io.py)）：
-
-| 工具      | 功能      |
-|---------|---------|
-| `read`  | 读取文件内容  |
-| `write` | 覆盖写入文件  |
-| `edit`  | 精确匹配后替换 |
-
----
-
-#### 4. compact_tool_result — 工具结果压缩
-
-[ToolResultCompactor](reme/memory/file_based/components/tool_result_compactor.py) 解决工具输出过长导致上下文膨胀的问题。
-
-```mermaid
-graph LR
-    M[messages] --> L{遍历 tool_result<br>len > threshold?}
-    L -->|否| K[保留原样]
-    L -->|是| T[truncate_text<br>截断到 threshold]
-    T --> S[完整内容写入<br>tool_result/uuid.txt]
-    S --> R[消息追加文件路径引用]
-    R --> C[cleanup_expired_files<br>清理过期文件]
-```
-
-- **自动清理**：过期文件（超过 `retention_days`）在 `start`/`close`/`compact_tool_result` 时自动删除
-
----
-
-#### 5. memory_search — 记忆检索
-
-[MemorySearch](reme/memory/file_based/tools/memory_search.py) 提供**向量 + BM25 混合检索**能力。
-
-```mermaid
-graph LR
-    Q[query] --> E[Embedding<br>向量化]
-    E --> V[vector_search<br>语义相似]
-    Q --> B[BM25<br>关键词匹配]
-    V -->|" weight: 0.7 "| M[去重 + 加权融合]
-    B -->|" weight: 0.3 "| M
-    M --> F[min_score 过滤]
-    F --> R[Top-N 结果]
-```
-
-- **融合机制**：向量权重 0.7 + BM25 权重 0.3，兼顾语义相似和精确匹配
-
----
-
-#### 6. ReMeInMemoryMemory — 会话内存
-
-[ReMeInMemoryMemory](reme/memory/file_based/reme_in_memory_memory.py) 扩展 AgentScope 的 `InMemoryMemory`，提供 Token
-感知的内存管理和原始对话持久化能力。
-
-```mermaid
-graph LR
-    C[content] --> G[get_memory<br>exclude_mark=COMPRESSED]
-    G --> F[排除已压缩消息]
-    F --> P{prepend_summary?}
-    P -->|是| S[头部插入 previous-summary]
-    S --> O[输出 messages]
-    P -->|否| O
-    M[mark_messages_compressed] --> D[持久化到 dialog/YYYY-MM-DD.jsonl]
-    D --> R[从内存移除]
-```
-
-| 功能                               | 说明                    |
-|----------------------------------|-----------------------|
-| `get_memory`                     | 按标记过滤，自动追加压缩摘要        |
-| `estimate_tokens`                | 估算上下文 Token 用量        |
-| `state_dict` / `load_state_dict` | 状态序列化/反序列化（会话持久化）     |
-| `mark_messages_compressed`       | 标记消息压缩并持久化到 dialog 目录 |
-| `clear_content`                  | 持久化所有消息后清空内存          |
-
-**原始对话持久化**：当消息被压缩或清空时，自动保存到 `{dialog_path}/{date}.jsonl`，每行一条 JSON 格式的消息记录。
-
----
-
-#### 7. pre_reasoning_hook — 推理前预处理
-
-整合上述组件的统一入口，在每轮推理前自动管理上下文。
-
-```mermaid
-graph LR
-    M[messages] --> TC[compact_tool_result<br>压缩超长工具输出]
-    TC --> CC[check_context<br>计算剩余空间]
-    CC --> D{messages_to_compact<br>非空?}
-    D -->|否| K[返回原消息 + 原摘要]
-    D -->|是| V{is_valid?}
-    V -->|否| K
-    V -->|是| CM[compact_memory<br>同步生成摘要]
-    V -->|是| SM[add_async_summary_task<br>异步持久化]
-    CM --> R[返回 messages_to_keep + 新摘要]
-```
-
-**执行流程**：
-
-1. `compact_tool_result` — 压缩超长工具输出
-2. `check_context` — 检查上下文是否超限
-3. `compact_memory` — 生成压缩摘要（同步）
-4. `summary_memory` — 持久化记忆（异步后台）
-
----
-
-## 🗃️ 基于向量库的记忆系统
-
-[ReMe Vector Based](reme/reme.py) 是基于向量库的记忆系统核心类，支持三种记忆类型的统一管理：
-
-| 记忆类型         | 用途               |
-|--------------|------------------|
-| **个人记忆**     | 记录用户偏好、习惯        |
-| **任务/程序性记忆** | 记录任务执行经验、成功/失败模式 |
-| **工具记忆**     | 记录工具使用经验、参数优化    |
-
-### 核心能力
-
-| 方法                 | 功能       | 说明             |
-|--------------------|----------|----------------|
-| `summarize_memory` | 🧠 记忆总结  | 从对话中自动提取并存储记忆  |
-| `retrieve_memory`  | 🔍 记忆检索  | 根据查询检索相关记忆     |
-| `add_memory`       | ➕ 添加记忆   | 手动添加记忆到向量库     |
-| `get_memory`       | 📖 获取记忆  | 通过 ID 获取单条记忆   |
-| `update_memory`    | ✏️ 更新记忆  | 更新已有记忆的内容或元数据  |
-| `delete_memory`    | 🗑️ 删除记忆 | 删除指定记忆         |
-| `list_memory`      | 📋 列出记忆  | 列出某类记忆，支持过滤和排序 |
-
-### 安装与环境变量
-
-安装和环境变量配置与 [ReMeLight 一致](#安装)，通过环境变量设置 API 密钥，可写在项目根目录的 `.env` 文件中。
-
-
-### Python 使用
-
-```python
-import asyncio
-
-from reme import ReMe
-
-
-async def main():
-    # 初始化 ReMe
-    reme = ReMe(
-        working_dir=".reme",
-        default_llm_config={
-            "backend": "openai",
-            "model_name": "qwen3.5-plus",
-        },
-        default_embedding_model_config={
-            "backend": "openai",
-            "model_name": "text-embedding-v4",
-            "dimensions": 1024,
-        },
-        default_vector_store_config={
-            "backend": "local",  # 支持 local/chroma/qdrant/elasticsearch
-        },
-    )
-    await reme.start()
-
-    messages = [
-        {"role": "user", "content": "帮我写一个 Python 脚本", "time_created": "2026-02-28 10:00:00"},
-        {"role": "assistant", "content": "好的，我来帮你写", "time_created": "2026-02-28 10:00:05"},
-    ]
-
-    # 1. 从对话中总结记忆（自动提取用户偏好、任务经验等）
-    result = await reme.summarize_memory(
-        messages=messages,
-        user_name="alice",  # 个人记忆
-        # task_name="code_writing",  # 任务记忆
-    )
-    print(f"总结结果: {result}")
-
-    # 2. 检索相关记忆
-    memories = await reme.retrieve_memory(
-        query="Python 编程",
-        user_name="alice",
-        # task_name="code_writing",
-    )
-    print(f"检索结果: {memories}")
-
-    # 3. 手动添加记忆
-    memory_node = await reme.add_memory(
-        memory_content="用户喜欢简洁的代码风格",
-        user_name="alice",
-    )
-    print(f"添加的记忆: {memory_node}")
-    memory_id = memory_node.memory_id
-
-    # 4. 通过 ID 获取单条记忆
-    fetched_memory = await reme.get_memory(memory_id=memory_id)
-    print(f"获取的记忆: {fetched_memory}")
-
-    # 5. 更新记忆内容
-    updated_memory = await reme.update_memory(
-        memory_id=memory_id,
-        user_name="alice",
-        memory_content="用户喜欢简洁且带注释的代码风格",
-    )
-    print(f"更新后的记忆: {updated_memory}")
-
-    # 6. 列出用户的所有记忆（支持过滤和排序）
-    all_memories = await reme.list_memory(
-        user_name="alice",
-        limit=10,
-        sort_key="time_created",
-        reverse=True,
-    )
-    print(f"用户记忆列表: {all_memories}")
-
-    # 7. 删除指定记忆
-    await reme.delete_memory(memory_id=memory_id)
-    print(f"已删除记忆: {memory_id}")
-
-    # 8. 删除所有记忆（谨慎使用）
-    # await reme.delete_all()
-
-    await reme.close()
-
-
-if __name__ == "__main__":
-    asyncio.run(main())
-```
-
-### 技术架构
-
-```mermaid
-graph LR
-    User[用户 / Agent] --> ReMe[Vector Based ReMe]
-    ReMe --> Summarize[记忆总结]
-    ReMe --> Retrieve[记忆检索]
-    ReMe --> CRUD[增删改查]
-    Summarize --> PersonalSum[PersonalSummarizer]
-    Summarize --> ProceduralSum[ProceduralSummarizer]
-    Summarize --> ToolSum[ToolSummarizer]
-    Retrieve --> PersonalRet[PersonalRetriever]
-    Retrieve --> ProceduralRet[ProceduralRetriever]
-    Retrieve --> ToolRet[ToolRetriever]
-    PersonalSum --> VectorStore[向量数据库]
-    ProceduralSum --> VectorStore
-    ToolSum --> VectorStore
-    PersonalRet --> VectorStore
-    ProceduralRet --> VectorStore
-    ToolRet --> VectorStore
-```
-
-### 实验效果
-
-本实验部分在 LoCoMo和HaluMem 两个数据集上进行评测，实验设置如下：
-
-1. **ReMe 使用模型**：如各表 backbone 列所示。
-2. **评估使用模型**：采用 LLM-as-a-Judge 协议（参照 MemOS）——每条回答由 GPT-4o-mini 裁判模型打分。
-
-实验设置尽量与各基线论文保持一致，以复用其公开结果。
-
-### LoCoMo
-
-| Method   | Single Hop | Multi Hop | Temporal  | Open Domain | Overall   |
-|----------|------------|-----------|-----------|-------------|-----------|
-| MemoryOS | 62.43      | 56.50     | 37.18     | 40.28       | 54.70     |
-| Mem0     | 66.71      | 58.16     | 55.45     | 40.62       | 61.00     |
-| MemU     | 72.77      | 62.41     | 33.96     | 46.88       | 61.15     |
-| MemOS    | 81.45      | 69.15     | 72.27     | 60.42       | 75.87     |
-| HiMem    | 89.22      | 70.92     | 74.77     | 54.86       | 80.71     |
-| Zep      | 88.11      | 71.99     | 74.45     | 66.67       | 81.06     |
-| TiMem    | 81.43      | 62.20     | 77.63     | 52.08       | 75.30     |
-| TSM      | 84.30      | 66.67     | 71.03     | 58.33       | 76.69     |
-| MemR3    | 89.44      | 71.39     | 76.22     | 61.11       | 81.55     |
-| **ReMe** | **89.89**  | **82.98** | **83.80** | **71.88**   | **86.23** |
-
-### HaluMem
-
-| Method      | Memory Integrity | Memory Accuracy | QA Accuracy |
-|-------------|------------------|-----------------|-------------|
-| MemoBase    | 14.55            | 92.24           | 35.53       |
-| Supermemory | 41.53            | 90.32           | 54.07       |
-| Mem0        | 42.91            | 86.26           | 53.02       |
-| ProMem      | **73.80**        | 89.47           | 62.26       |
-| **ReMe**    | 67.72            | **94.06**       | **88.78**   |
-
----
-
-## 🧪 程序化记忆论文
-
-> 我们的程序性（任务）记忆论文已在 [arXiv](https://arxiv.org/abs/2512.10696) 发布
-
-### 🌍 [Appworld 实验](benchmark/appworld/quickstart.md)
-
-我们在 Appworld 环境上使用 Qwen3-8B（非思考模式）进行评测：
-
-| 方法      | Avg@4               | Pass@4              |
-|---------|---------------------|---------------------|
-| 无 ReMe  | 0.1497              | 0.3285              |
-| 使用 ReMe | 0.1706 **(+2.09%)** | 0.3631 **(+3.46%)** |
-
-Pass@K 衡量在生成 K 个候选中，至少一个成功完成任务（score=1）的概率。
-当前实验使用的是内部 AppWorld 环境，可能与对外版本存在轻微差异。
-
-关于如何复现实验的更多细节，见 [quickstart.md](benchmark/appworld/quickstart.md)
-
-### 🔧 [BFCL-V3 实验](benchmark/bfcl/quickstart.md)
-
-我们在 BFCL-V3 multi-turn-base 任务（随机划分 50 train / 150 val）上，使用 Qwen3-8B（思考模式）进行评测：
-
-| 方法      | Avg@4               | Pass@4              |
-|---------|---------------------|---------------------|
-| 无 ReMe  | 0.4033              | 0.5955              |
-| 使用 ReMe | 0.4450 **(+4.17%)** | 0.6577 **(+6.22%)** |
-
-关于如何复现实验的更多细节，见 [quickstart.md](benchmark/bfcl/quickstart.md)
-
-## ⭐ 社区与支持
-
-- **Star 与 Watch**：Star 可让更多智能体开发者发现 ReMe；Watch 可助你第一时间获知新版本与特性。
-- **分享你的成果**：在 Issue 或 Discussion 中分享 ReMe 为你的智能体解锁了什么——我们非常乐意展示社区的优秀案例。
-- **需要新功能？** 提交 Feature Request，我们将与社区一起完善。
-- **代码贡献**：欢迎任何形式的代码贡献，请参阅 [贡献指南](docs/contribution.md)。
-- **致谢**：感谢 OpenClaw、Mem0、MemU、CoPaw 等优秀的开源项目，为项目带来诸多启发与帮助。
+<p align="center">
+  <img src="docs/figure/reme-overview.svg" alt="ReMe 文件化记忆系统总览" width="92%">
+</p>
+
+## 🧭 记忆设计理念
+
+> 捕获原始对话和资料，将其整理为长期偏好、可复用经验和有价值的知识，并让结果始终能被用户和 Agent 直接编辑。
+
+### 自动记忆流程
+
+ReMe 遵循 capture → index → consolidate → recall 的循环。对话和资料先变成 daily 记忆卡片；后台任务保持文件可检索；
+`auto_dream` 将稳定知识沉淀到 `digest/`；Agent 再通过搜索、wikilink 或 proactive topics 召回记忆。
+
+| 能力                                          | 入口                                | 作用                                  | 输出                                                       |
+|---------------------------------------------|-----------------------------------|-------------------------------------|----------------------------------------------------------|
+| [`auto_memory`](docs/zh/auto_memory.md)     | Agent hook 或 `reme auto_memory`   | 提炼有长期价值的对话事实，同时保留原始 session。      | `session/dialog/*.jsonl`、`daily/<date>/<session>.md`     |
+| [`auto_resource`](docs/zh/auto_resource.md) | 资源监听或 `reme auto_resource`       | 将 `resource/<date>/` 下的文件转为带来源链接的 daily 卡片。 | `daily/<date>/<resource-card>.md`                         |
+| [`auto_index`](docs/zh/memory_search.md)    | 后台监听或 `reme reindex`             | 维护 chunks、BM25/embedding 索引和 wikilink 图谱。 | 可检索的 `daily/`、`digest/`、`resource/` 内容                 |
+| [`auto_dream`](docs/zh/auto_dream.md)       | `dream_cron` 或 `reme auto_dream`   | 将变化的 daily 卡片整理为长期 personal、procedure 和 wiki 记忆。 | `digest/**`、`daily/<date>/interests.yaml`                 |
+| [`proactive`](docs/zh/proactive.md)         | Agent 决定主动行动前调用 `reme proactive` | 读取 `auto_dream` 生成的 topics；是否以及如何提醒用户由宿主 Agent 决定。 | 来自 `daily/<date>/interests.yaml` 的结构化 topics           |
+
+<table>
+  <tr>
+    <td align="center" width="50%">
+      <img src="docs/figure/memory-as-file.svg" alt="Memory as File" width="92%">
+    </td>
+    <td align="center" width="50%">
+      <img src="docs/figure/auto-memory-resource.svg" alt="Auto Memory and Resource" width="92%">
+    </td>
+  </tr>
+  <tr>
+    <td align="center" width="50%">
+      <img src="docs/figure/auto-dream-and-proactive.svg" alt="Auto Dream and Proactive" width="92%">
+    </td>
+    <td align="center" width="50%">
+      <img src="docs/figure/auto-index-and-memory-search.svg" alt="Auto Index and Memory Search" width="92%">
+    </td>
+  </tr>
+</table>
+
+## 🤝 Agent-friendly Integration
+
+ReMe 作为本地记忆服务运行，并提供 CLI、HTTP API、MCP server 和 SDK 等多种接入方式。不同 Agent 可以选择适合自身 runtime
+的路径，同时共享同一个本地 memory workspace。
+
+| Agent                                                | 推荐接入方式                                                              | 开箱可用能力                                                             |
+|------------------------------------------------------|-----------------------------------------------------------------------|--------------------------------------------------------------------|
+| **QwenPaw**                                          | 通过 Python SDK 嵌入 ReMe。                                                | 复用应用自身生命周期和模型配置，同时保持 memory 本地、文件化。                         |
+| **Claude Code**                                      | 以 MCP service 启动 ReMe，并安装 [plugins/reme](plugins/reme)。              | MCP recall tools、`reme-memory` skill，以及自动记录会话的 Stop hook。          |
+| **Other CLI-capable agents (OpenClaw/Hermes/Codex)** | 复制或安装 [skills/reme_memory/SKILL.md](skills/reme_memory/SKILL.md)。 | 通过 CLI 搜索/读取/写入记忆，并调用 `auto_memory`、`auto_dream` 和 `proactive`。 |
+
+<p align="center"><b>集成演示</b></p>
+
+<table>
+  <tr>
+    <td align="center"></td>
+    <td width="45%" align="center"><b>Auto Memory</b></td>
+    <td width="45%" align="center"><b>Auto Dream</b></td>
+  </tr>
+  <tr>
+    <td align="center"><b>QwenPaw</b></td>
+    <td width="45%">
+      <img src="docs/figure/qwenpaw-auto-memory.gif" alt="QwenPaw Auto Memory 演示" width="100%">
+    </td>
+    <td width="45%">
+      <img src="docs/figure/qwenpaw-auto-dream.gif" alt="QwenPaw Auto Dream 演示" width="100%">
+    </td>
+  </tr>
+  <tr>
+    <td align="center"><b>Claude Code</b></td>
+    <td width="45%">
+      <img src="docs/figure/cc-auto-memory.gif" alt="Claude Code Auto Memory 演示" width="100%">
+    </td>
+    <td width="45%">
+      <img src="docs/figure/cc-auto-dream.gif" alt="Claude Code Auto Dream 演示" width="100%">
+    </td>
+  </tr>
+</table>
+
+## 🛠️ ReMe Operations
+
+ReMe 通过 CLI 暴露的统一 job interface 操作 workspace。Agent 通常只需要使用检索、读取、写入、编辑和自动记忆相关命令；更底层的索引、
+frontmatter 和文件操作接口主要用于维护、调试或高级集成。完整 job 列表可以运行 `reme help` 查看。
+
+| 命令                                      | 作用                                          |
+|-----------------------------------------|---------------------------------------------|
+| `reme start`                            | 启动本地 ReMe 服务。                               |
+| `reme version` / `reme health_check`    | 检查包版本和组件状态。                                |
+| [`reme search`](docs/zh/memory_search.md) | 执行混合记忆检索。                                  |
+| `reme read` / `reme write` / `reme edit` | 检查和维护 Markdown 记忆文件。                       |
+| `reme auto_memory`                      | 将对话 messages 转为 daily 记忆卡片；需要 LLM 凭证。      |
+| `reme auto_resource`                    | 将 `resource/` 下的文件解读为 daily 资料卡片；需要 LLM 凭证。 |
+| `reme auto_dream` / `reme proactive`    | 将 daily 记忆整理为长期 digest，并暴露值得关注的主题。         |
+| `reme reindex`                          | 基于已有文件重建检索和 wikilink 索引。                   |
+
+## 🤝 社区与支持
+
+- **问题反馈与需求**：请先查看 [Open Issues](https://github.com/agentscope-ai/ReMe/issues)；如无相关讨论，可新建 Issue
+  说明背景、目标行为和影响范围。
+- **代码贡献**：改动前建议阅读 [贡献指南](docs/zh/contributing.md) 和 [代码框架](docs/zh/framework.md)，遵循 CLI /
+  Service / Application / Job / Step / Component 的分层。
+- **文档贡献**：用户可见的安装、配置、调用或行为变化，请同步更新 `docs/en/`、`docs/zh/` 或 README 文件。
+- **提交规范**：建议使用 Conventional Commits，例如 `feat(search): add link expansion option`、
+  `docs(zh): update quick start`。
+- **提交前检查**：提交 PR 前请尽量运行 `pre-commit run --all-files` 和 `pytest`；如有依赖 LLM、embedding 或外部服务的测试无法运行，请在
+  PR 中说明。
+- **获取帮助**：如需反馈 Bug 或功能请求，请使用 [GitHub Issues](https://github.com/agentscope-ai/ReMe/issues)；项目文档见
+  [https://reme.agentscope.io/](https://reme.agentscope.io/)。
 
 ### 贡献者
 
@@ -622,33 +297,20 @@ Pass@K 衡量在生成 K 个候选中，至少一个成功完成任务（score=1
   <img src="https://contrib.rocks/image?repo=agentscope-ai/ReMe" alt="贡献者" />
 </a>
 
----
-
 ## 📄 引用
 
 ```bibtex
-@software{AgentscopeReMe2025,
-  title = {AgentscopeReMe: Memory Management Kit for Agents},
+@software{ReMe2026,
+  title = {Remember me, Refine me: Memory Management Kit for Agents},
   author = {ReMe Team},
   url = {https://reme.agentscope.io},
-  year = {2025}
+  year = {2026}
 }
 ```
-
----
 
 ## ⚖️ 许可证
 
 本项目基于 Apache License 2.0 开源，详情参见 [LICENSE](./LICENSE) 文件。
-
----
-
-## 🤔 为什么叫 ReMe？
-
-ReMe 是 **Remember Me** 和 **Refine Me** 的缩写，寓意让 AI 智能体「记住我」并在交互中「精进自我」。我们希望 ReMe
-不只是一个冷冰冰的记忆模块，而是能让智能体真正理解用户、积累经验、持续进化的伙伴。
-
----
 
 ## 📈 Star 历史
 
